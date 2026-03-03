@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - '"main"'
+  workflow_dispatch:
+    inputs:
+      project-id:
+        description: "Select the Environment for Project Selection to check the access"
+        required: true
+        type: string
 
 env:
   PROJECT_ID: 'my-project' # TODO: update to your Google Cloud project ID
