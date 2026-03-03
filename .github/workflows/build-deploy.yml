@@ -5,11 +5,6 @@ on:
     branches:
       - '"main"'
   workflow_dispatch:
-    inputs:
-      project-id:
-        description: "Select the Environment for Project Selection to check the access"
-        required: true
-        type: string
 
 env:
   PROJECT_ID: 'my-project' # TODO: update to your Google Cloud project ID
@@ -33,14 +28,10 @@ jobs:
 
     steps:
       - name: 'Checkout'
-        uses: 'actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332' # actions/checkout@v4
-
-      # Configure Workload Identity Federation and generate an access token.
-      #
-      # See https://github.com/google-github-actions/auth for more options,
-      # including authenticating via a JSON credentials file.
+        uses: 'actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332' 
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
-        uses: 'google-github-actions/auth@f112390a2df9932162083945e46d439060d66ec2' # google-github-actions/auth@v2
+        uses: 'google-github-actions/auth@v2' # google-github-actions/auth@v2
         with:
           workload_identity_provider: 'projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/providers/github'
+          project_id: 'developer-sandbox-489120'
