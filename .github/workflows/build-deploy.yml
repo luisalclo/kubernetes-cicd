@@ -26,3 +26,9 @@ jobs:
           create_credentials_file: true
           workload_identity_provider: 'projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/providers/github'
           project_id: 'developer-sandbox-489120'
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      - name: 'List Cloud Storage Buckets'
+        run: |
+          gcloud storage buckets list
