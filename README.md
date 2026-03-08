@@ -1,11 +1,11 @@
-# 🚀 GCP GitOps & Kubernetes CI/CD Pipeline
+# 🚀 GCP Cloud Infrastructure & GKE Deployment Pipeline
 
 ![Terraform](https://img.shields.io/badge/terraform-%235835CC.svg?style=for-the-badge&logo=terraform&logoColor=white)
 ![Google Cloud](https://img.shields.io/badge/GoogleCloud-%234285F4.svg?style=for-the-badge&logo=google-cloud&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/github%20actions-%232671E5.svg?style=for-the-badge&logo=githubactions&logoColor=white)
 ![Kubernetes](https://img.shields.io/badge/kubernetes-%23326ce5.svg?style=for-the-badge&logo=kubernetes&logoColor=white)
 
-An automated **Infrastructure as Code (IaC)** and **Application Deployment** pipeline for Google Cloud Platform (GCP). This project leverages **Terraform** for provisioning and **GitHub Actions** for orchestration, following a GitOps approach.
+A comprehensive automated solution for **GCP Infrastructure provisioning** and **GKE Workload delivery**. This project leverages **Terraform** for full-stack cloud resources and **GitHub Actions** for high-velocity GitOps orchestration, ensuring a production-grade environment.
 
 ---
 
@@ -13,10 +13,10 @@ An automated **Infrastructure as Code (IaC)** and **Application Deployment** pip
 
 The system is designed to manage the full lifecycle of a GKE-based environment within the GCP project `developer-sandbox-489120`.
 
-*   **Networking:** Custom VPC with isolated subnets for GKE Nodes, Services, and Management (Jumpbox).
-*   **Compute:** A Google Kubernetes Engine (GKE) **Standard** Cluster with private nodes.
-*   **Security:** **Keyless Authentication** using Workload Identity Federation (WIF).
-*   **Workloads:** Automated deployment of Kubernetes manifests via the Terraform `kubernetes` provider.
+*   **GCP Networking:** Custom VPC with isolated subnets for GKE Nodes, Services, and Management (Jumpbox).
+*   **GKE Compute:** A Google Kubernetes Engine (GKE) **Standard** Cluster with private nodes and master authorized networks.
+*   **Security & Identity:** **Keyless Authentication** using Workload Identity Federation (WIF) and direct principal bindings.
+*   **GKE Workloads:** Automated deployment of microservices (Bookinfo) via the Terraform `kubernetes` provider.
 
 ### 🔐 Authentication Flow (Workload Identity Federation)
 
@@ -183,6 +183,27 @@ gcloud projects add-iam-policy-binding "developer-sandbox-489120" \
 | **403 Forbidden** | IAM Principal mismatch | Ensure the `environment: 'production'` is set in the GitHub Workflow. |
 | **Backend 404** | GCS Bucket missing | Verify that the bucket `gcp-demo-gkefeb2026` exists in the project. |
 | **GKE 401 Unauth** | Cluster connectivity | Check if `master_authorized_networks` allows the GitHub Runner IP (currently set to 0.0.0.0/0). |
+
+---
+
+## 🎯 Demo Walkthrough (Step-by-Step)
+
+This guide provides a structured flow to demonstrate the full lifecycle of the project, from infrastructure provisioning to application delivery.
+
+### Phase 1: Infrastructure Provisioning (Safe Rollout)
+1.  **Code Change:** Modify a variable in `environments/gcp-env-demo/infrastructure/infra.auto.tfvars` (e.g., change `std_node_count`).
+2.  **CI Trigger:** Push to `main`. The `deploy-infra.yaml` workflow triggers automatically.
+3.  **The "Safety Net":** Observe that the workflow executes `terraform plan` but **stops** before `apply`. This demonstrates a real-world production control.
+4.  **Manual Approval:** Go to the **Actions** tab in GitHub, select the latest run, and trigger the `workflow_dispatch` with the `run_apply` checkbox enabled to finalize the infra.
+
+### Phase 2: Application Deployment (GitOps Flow)
+1.  **Code Change:** Update a manifest in `environments/gcp-env-demo/k8s-apps/deploy-k8s.tf` (e.g., change the image version of `reviews-v3`).
+2.  **Intelligent Trigger:** Push to `main`. Notice that **only** the `deploy-apps.yml` pipeline triggers. The VPC/GKE infra remains untouched (Path Filtering).
+3.  **State Integration:** The App pipeline automatically "pulls" the GKE endpoint and credentials from the Infra state file via `terraform_remote_state`.
+4.  **Verification:** Once finished, access the `productpage` external IP (Type: LoadBalancer) to see the Bookinfo microservices communicating via Internal Services.
+
+### Phase 3: Zero-Trust Verification
+*   **Audit Log:** Check the GCP IAM console. You will see no Service Account keys. All actions are performed via the **Short-lived OIDC Token** granted to the GitHub Actions principal.
 
 ---
 *Developed as a GitOps reference for GCP & Kubernetes.*
