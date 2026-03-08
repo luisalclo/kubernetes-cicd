@@ -1,6 +1,6 @@
 # 1. Global Context
 gcp = {
-  project_id = "developer-sandbox"
+  project_id = "developer-sandbox-489120"
   region     = "us-central1"
   zone       = "us-central1-c"
 }
