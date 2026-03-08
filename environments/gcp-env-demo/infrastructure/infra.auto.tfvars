@@ -1,18 +1,18 @@
 # 1. Global Context
 gcp = {
-  project_id = "meli-firestore"
+  project_id = "developer-sandbox"
   region     = "us-central1"
   zone       = "us-central1-c"
 }
 
 # 2. Network Config
 network = {
-  name            = "meli-vpc-test-2"
-  subnet_jumpbox  = "meli-subnet-jumpbox"
+  name            = "gcp-vpc-demo-gke"
+  subnet_jumpbox  = "gcp-gke-subnet-jumpbox"
   cidr_jumpbox    = "192.168.10.0/24"
-  subnet_gke      = "meli-subnet-gke-nodes"
+  subnet_gke      = "gcp-subnet-gke-nodes"
   cidr_gke        = "10.0.0.0/24"
-  subnet_services = "meli-subnet-lbs"
+  subnet_services = "gcp-subnet-lbs"
   cidr_services   = "192.168.20.0/24"
 }
 
@@ -24,7 +24,7 @@ firewall = {
 
  # 5. GKE Cluster Config
 gke_config = {
-  name              = "meli-gke-standard"
+  name              = "gke-demo-standard"
   master_cidr       = "172.16.0.32/28"
   cluster_cidr      = "10.136.0.0/14"
   services_cidr     = "34.118.224.0/20"
@@ -75,10 +75,4 @@ jumpbox = {
   disk_size    = 50
   disk_type    = "pd-balanced"
   sa_id        = "jumpbox-admin-sa"
-}
-
-# 7. Storage Buckets (Existing Manual Buckets to retrive json trigger and retrive json payloads)
-buckets = {
-  config_name = "locust-config"
-  data_name   = "meli-json-payloads"
 }
