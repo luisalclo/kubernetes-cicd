@@ -1,0 +1,323 @@
+{
+  "uid": "k8s-super-dashboard",
+  "title": "Kubernetes Health Dashboard (Dynamic Capacity)",
+  "schemaVersion": 36,
+  "version": 21,
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "cluster_cpu_cores",
+        "label": "Total Cluster Cores",
+        "description": "Total sum of vCPUs across the entire cluster",
+        "query": "scalar(sum(kube_node_status_capacity{resource='cpu'}))",
+        "datasource": "Prometheus",
+        "definition": "scalar(sum(kube_node_status_capacity{resource='cpu'}))",
+        "type": "query",
+        "refresh": 1,
+        "hide": 2
+      },
+      {
+        "name": "cluster_ram_gb",
+        "label": "Total Cluster RAM",
+        "description": "Total sum of RAM in GB across the entire cluster",
+        "query": "scalar(round(sum(kube_node_status_capacity{resource='memory'}) / 1024 / 1024 / 1024, 0.1))",
+        "datasource": "Prometheus",
+        "definition": "scalar(round(sum(kube_node_status_capacity{resource='memory'}) / 1024 / 1024 / 1024, 0.1))",
+        "type": "query",
+        "refresh": 1,
+        "hide": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Node CPU Utilization % (Capacity per node)",
+      "type": "timeseries",
+      "datasource": null,
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 7 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": { "axisLabel": "Percentage" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "{{instance}}",
+          "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Node Memory Utilization % (Capacity per node)",
+      "type": "timeseries",
+      "datasource": null,
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 7 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "{{instance}}",
+          "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Namespace CPU Usage (Total Cluster: $cluster_cpu_cores vCPUs)",
+      "description": "CPU usage as a % of the TOTAL cluster capacity. Auto-scaled Y-axis.",
+      "type": "timeseries",
+      "datasource": null,
+      "gridPos": { "x": 0, "y": 7, "w": 24, "h": 7 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": { "axisLabel": "% of Cluster" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "{{namespace}}",
+          "expr": "sum by (namespace) (rate(container_cpu_usage_seconds_total{container!=\"\", container!=\"POD\"}[5m])) / scalar(sum(kube_node_status_capacity{resource=\"cpu\"})) * 100"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Namespace Memory Usage (Total Cluster: $cluster_ram_gb GB)",
+      "description": "Memory usage as a % of the TOTAL cluster RAM. Auto-scaled Y-axis.",
+      "type": "timeseries",
+      "datasource": null,
+      "gridPos": { "x": 0, "y": 14, "w": 24, "h": 7 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": { "axisLabel": "% of Cluster" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "{{namespace}}",
+          "expr": "sum by (namespace) (container_memory_usage_bytes{container!=\"\", container!=\"POD\"}) / scalar(sum(node_memory_MemTotal_bytes)) * 100"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Pod CPU Usage (% of its Node Capacity) — Top 10",
+      "description": "Percentage relative to the specific node where the pod is running.",
+      "type": "timeseries",
+      "datasource": null,
+      "gridPos": { "x": 0, "y": 21, "w": 12, "h": 7 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "{{namespace}}/{{pod}} ({{node}})",
+          "expr": "topk(10, (sum by (namespace, pod, node) (label_replace(rate(container_cpu_usage_seconds_total{container!=\"\",pod!=\"\"}[5m]), \"node\", \"$1\", \"kubernetes_io_hostname\", \"(.*)\")) / on(node) group_left max by (node) (kube_node_status_capacity{resource=\"cpu\",unit=\"core\"}) * 100))"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Pod RAM Usage (% of its Node Capacity) — Top 10",
+      "description": "Percentage relative to the specific node where the pod is running.",
+      "type": "timeseries",
+      "datasource": null,
+      "gridPos": { "x": 12, "y": 21, "w": 12, "h": 7 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "{{namespace}}/{{pod}} ({{node}})",
+          "expr": "topk(10, (sum by (namespace, pod, node) (label_replace(container_memory_working_set_bytes{container!=\"\",pod!=\"\"}, \"node\", \"$1\", \"kubernetes_io_hostname\", \"(.*)\")) / on(node) group_left max by (node) (kube_node_status_capacity{resource=\"memory\",unit=\"byte\"}) * 100))"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "gridPos": { "x": 0, "y": 28, "w": 24, "h": 1 },
+      "type": "row",
+      "title": "Infrastructure Health & Inventory",
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 8,
+      "title": "Cluster API & Monitoring Status",
+      "description": "Green if monitoring stack can reach Kubernetes API.",
+      "type": "stat",
+      "datasource": null,
+      "gridPos": { "x": 0, "y": 29, "w": 6, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "scalar(sum(up{job=~'.*kube-state-metrics.*'}) or vector(0))",
+          "legendFormat": "Status"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "UP",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "NO DATA",
+                  "color": "grey"
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "background"
+      }
+    },
+    {
+      "id": 9,
+      "title": "Node Inventory (Capacity & Status)",
+      "description": "Real-time node status. RAM and CPU are total capacities.",
+      "type": "table",
+      "datasource": null,
+      "gridPos": { "x": 6, "y": 29, "w": 18, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (node) (kube_node_status_condition{condition=\"Ready\", status=\"true\"})",
+          "format": "table",
+          "legendFormat": "Health"
+        },
+        {
+          "refId": "B",
+          "expr": "max by (node) (kube_node_status_capacity{resource=\"cpu\"})",
+          "format": "table",
+          "legendFormat": "Cores"
+        },
+        {
+          "refId": "C",
+          "expr": "max by (node) (kube_node_status_capacity{resource=\"memory\"})",
+          "format": "table",
+          "legendFormat": "RAM"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "seriesToColumns",
+          "options": { "byField": "node" }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true },
+            "indexByName": {},
+            "renameByName": {
+              "Value #A": "Health",
+              "Value #B": "vCPUs",
+              "Value #C": "RAM Total"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "displayMode": "auto" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Health" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
+              { "id": "mappings", "value": [{ "type": "value", "options": { "1": { "text": "READY", "color": "green" }, "0": { "text": "NOT READY", "color": "red" } } }] }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "RAM Total" },
+            "properties": [
+              { "id": "unit", "value": "decbytes" },
+              { "id": "decimals", "value": 1 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "vCPUs" },
+            "properties": [
+              { "id": "unit", "value": "none" },
+              { "id": "custom.width", "value": 100 }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
