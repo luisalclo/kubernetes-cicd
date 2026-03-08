@@ -9,7 +9,7 @@
 
 Automated Infrastructure as Code (IaC) and Application Deployment on Google Cloud Platform using Terraform and GitHub Actions.
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 This repository manages the complete lifecycle of a cloud environment and its workloads in GCP (`developer-sandbox-489120`). 
 
@@ -33,7 +33,7 @@ sequenceDiagram
     IAM-->>TF: 4. Grant Editor / Admin Permissions
     TF->>GKE: 5. Execute Plan / Apply (Infra & K8s Apps)
 
-    🔐 Security: Workload Identity Federation
+Security: Workload Identity Federation
 To adhere to zero-trust principles and avoid long-lived Service Account JSON keys, this project relies on Workload Identity Federation.
 
 Authentication is achieved by binding GCP IAM roles directly to the GitHub Principal.
@@ -62,7 +62,7 @@ gcloud projects add-iam-policy-binding "developer-sandbox-489120" \
   --member="principal://[iam.googleapis.com/projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/subject/repo:luisalclo/kubernetes-cicd:environment:production](https://iam.googleapis.com/projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/subject/repo:luisalclo/kubernetes-cicd:environment:production)"
 
 Markdown
-# 🚀 GCP GitOps & Kubernetes CI/CD Pipeline
+# GCP GitOps & Kubernetes CI/CD Pipeline
 
 ![Terraform](https://img.shields.io/badge/terraform-%235835CC.svg?style=for-the-badge&logo=terraform&logoColor=white)
 ![Google Cloud](https://img.shields.io/badge/GoogleCloud-%234285F4.svg?style=for-the-badge&logo=google-cloud&logoColor=white)
@@ -71,7 +71,7 @@ Markdown
 
 Automated Infrastructure as Code (IaC) and Application Deployment on Google Cloud Platform using Terraform and GitHub Actions.
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 This repository manages the complete lifecycle of a cloud environment and its workloads in GCP (`developer-sandbox-489120`). 
 
@@ -96,7 +96,7 @@ sequenceDiagram
     TF->>GKE: 5. Execute Plan / Apply (Infra & K8s Apps)
 
 
-🔐 Security: Workload Identity Federation
+Security: Workload Identity Federation
 To adhere to zero-trust principles and avoid long-lived Service Account JSON keys, this project relies on Workload Identity Federation.
 
 Authentication is achieved by binding GCP IAM roles directly to the GitHub Principal.
@@ -124,7 +124,7 @@ gcloud projects add-iam-policy-binding "developer-sandbox-489120" \
   --role="roles/editor" \
   --member="principal://[iam.googleapis.com/projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/subject/repo:luisalclo/kubernetes-cicd:environment:production](https://iam.googleapis.com/projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/subject/repo:luisalclo/kubernetes-cicd:environment:production)"
 
-📂 Repository Structure
+Repository Structure
 The Terraform codebase is decoupled into two lifecycles using GCS remote backends:
 
 Plaintext
@@ -137,7 +137,7 @@ Plaintext
 │   └── k8s-apps/             # K8s Manifests via TF Provider
 └── modules/                  # Reusable Terraform Modules
 
-⚙️ CI/CD Pipelines
+CI/CD Pipelines
 Pipelines trigger on push to main (filtered by paths) or manually via workflow_dispatch.
 
 Critical Implementation Detail:
@@ -168,7 +168,7 @@ jobs:
           # NOTE: No service_account parameter required (Direct Principal Auth)
 </details>
 
-🛠️ Incident Report & Troubleshooting
+Incident Report & Troubleshooting
 Issue: 403 Forbidden and 404 Not Found errors during Terraform initialization via GitHub Actions.
 Root Cause:
 
