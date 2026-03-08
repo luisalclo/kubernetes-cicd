@@ -1,17 +1,17 @@
-name: 'Deploy K8s Apps'
+name: 'Deploy K8s Apps (Terraform)'
 
 on:
   push:
     branches:
       - 'main'
-    # Only wake up if there are changes in the apps
+    # Only wake up if there are changes in the apps folder
     paths:
       - 'environments/gcp-env-demo/k8s-apps/**'
   workflow_dispatch: # Allows you to run it manually from GitHub
 
 jobs:
   k8s-deploy:
-    name: 'Kubernetes Apply'
+    name: 'Terraform Apply K8s Apps'
     runs-on: 'ubuntu-latest'
     environment: 'production'
 
@@ -20,9 +20,10 @@ jobs:
       id-token: 'write'
 
     steps:
-      - name: 'Checkout'
+      - name: 'Checkout Repo'
         uses: 'actions/checkout@v4' 
 
+      # 1. Authentication (Workload Identity magic remains intact)
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v2'
@@ -31,12 +32,16 @@ jobs:
           workload_identity_provider: 'projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/providers/github'
           project_id: 'developer-sandbox-489120'
 
-      - name: 'Set up Cloud SDK'
-        uses: 'google-github-actions/setup-gcloud@v2'
+      # 2. Install Terraform on the GitHub runner
+      - name: 'Setup Terraform'
+        uses: hashicorp/setup-terraform@v3
 
-      - name: 'Get GKE Credentials'
-        run: gcloud container clusters get-credentials ${{ vars.GKE_CLUSTER_NAME }} --region ${{ vars.GKE_CLUSTER_REGION }} --project ${{ vars.GCP_PROJECT_ID }}
-
-      - name: 'Deploy to GKE'
+      # 3. Initialize Terraform (downloads GCP and K8s providers)
+      - name: 'Terraform Init'
         working-directory: environments/gcp-env-demo/k8s-apps
-        run: kubectl apply -f .
+        run: terraform init
+
+      # 4. Deploy the app (auto-approve bypasses manual confirmation)
+      - name: 'Terraform Apply'
+        working-directory: environments/gcp-env-demo/k8s-apps
+        run: terraform apply -auto-approve
