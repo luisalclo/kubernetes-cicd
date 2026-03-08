@@ -1,11 +1,11 @@
-# Meli-TF/terraform/environments/luisenv/backend.tf
+# repo../kubernetes-cicd/terraform/environments/infra/backend.tf
 
 terraform {
   backend "gcs" {
     # The GCS bucket you created to store Terraform state files.
-    bucket = "meli-tf"
+    bucket = "gcp-demo-gkefeb2026"
 
     # A unique "folder" path within the bucket for this specific environment.
-    prefix = "terraform/env/meli-env-apps/infra"
+    prefix = "terraform/env/gcp-env-demo/infra"
   }
 }

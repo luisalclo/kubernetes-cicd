@@ -22,19 +22,6 @@ firewall = {
   ssh_port  = ["22"]
 }
 
-# 4. Firestore Detailed Config
-firestore_config = {
-  name             = "meli-firestore-native"
-  type             = "FIRESTORE_NATIVE"
-  edition          = "ENTERPRISE"
-  concurrency      = "PESSIMISTIC"
-  app_engine_integ = "DISABLED"
-  pitr             = "POINT_IN_TIME_RECOVERY_ENABLED"
-  delete_protect   = "DELETE_PROTECTION_DISABLED"
-  deletion_policy  = "DELETE"
-  app_user         = "mongo-user"
-}
-
  # 5. GKE Cluster Config
 gke_config = {
   name              = "meli-gke-standard"

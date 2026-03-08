@@ -24,32 +24,6 @@ output "vpc_subnet_lbs_name" {
   value       = module.vpc_network.subnet_03_name # Ensure your VPC module exports this
 }
 
-# --- FIRESTORE OUTPUTS ---
-
-output "firestore_database_name" {
-  description = "The full resource name of the Firestore database."
-  value       = module.firestore_mongo_db.database_name
-}
-
-output "firestore_location_id" {
-  description = "The location of the Firestore database."
-  value       = module.firestore_mongo_db.location_id
-}
-
-output "mongo_secret_resource_id" {
-  description = "The Secret Manager Resource ID (exported from the module)."
-  value       = module.firestore_mongo_db.mongo_secret_id
-}
-
-output "mongo_user_name" {
-  description = "The username (exported from the module)."
-  value       = module.firestore_mongo_db.mongo_user_name
-}
-
-output "mongo_host_address" {
-  description = "Dynamic Firestore Host (UID + Domain)"
-  value       = "${module.firestore_mongo_db.db_uid}.us-central1.firestore.goog"
-}
 
 # --- GKE CLUSTER OUTPUTS ---
 

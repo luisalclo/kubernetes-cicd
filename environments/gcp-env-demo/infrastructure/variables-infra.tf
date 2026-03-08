@@ -28,21 +28,6 @@ variable "firewall" {
   })
 }
 
-variable "firestore_config" {
-  description = "Detailed Firestore configuration"
-  type = object({
-    name             = string
-    type             = string
-    edition          = string
-    concurrency      = string
-    app_engine_integ = string
-    pitr             = string
-    delete_protect   = string
-    deletion_policy  = string
-    app_user         = string
-  })
-}
-
 variable "gke_config" {
   description = "Comprehensive GKE Cluster configuration"
   type = object({
@@ -97,13 +82,5 @@ variable "jumpbox" {
     disk_size    = number
     disk_type    = string
     sa_id        = string
-  })
-}
-
-variable "buckets" {
-  description = "Names for the GCS buckets to be created."
-  type = object({
-    config_name = string
-    data_name   = string
   })
 }

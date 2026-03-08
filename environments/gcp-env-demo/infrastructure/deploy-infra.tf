@@ -1,4 +1,4 @@
-############# BEGINNIN OF GCP INFRASTRUCTURE LOGICAL LAYER BELOW ################
+############# BEGINNING OF GCP INFRASTRUCTURE - LOGICAL LAYER BELOW ################
 
 # ============================================================================
 # 1. VPC NETWORK MODULE
@@ -50,32 +50,6 @@ resource "google_compute_firewall" "allow_iap_ssh" {
   source_ranges = var.firewall.iap_range
   target_tags   = ["jumpbox"]
 }
-
-# ============================================================================
-# 2. FIRESTORE NATIVE MODULE
-# ============================================================================
-
-module "firestore_mongo_db" {
-  source = "../../../modules/firestore-enterprise"
-
-  # --- General Settings ---
-  project_id    = var.gcp.project_id
-  database_name = var.firestore_config.name
-  location_id   = var.gcp.region
-
-  # --- Database Configuration ---
-  db_type                   = var.firestore_config.type
-  db_edition                = var.firestore_config.edition
-  db_concurrency_mode       = var.firestore_config.concurrency
-  db_app_engine_integration = var.firestore_config.app_engine_integ
-  db_pitr_enablement        = var.firestore_config.pitr
-  db_delete_protection      = var.firestore_config.delete_protect
-  db_deletion_policy        = var.firestore_config.deletion_policy
-  
-  db_tags       = {}
-  app_user_name = var.firestore_config.app_user
-}
-
 
 # ============================================================================
 # 3. GKE CLUSTER MODULE (Standard)
@@ -163,35 +137,6 @@ resource "google_project_iam_member" "gke_nodes_artifact_registry" {
   member  = "serviceAccount:${module.test_meli_gkecluster-standard.service_account_email}"
 }
 
-# ============================================================================
-# IAM PERMISSIONS (Grafana Access to Cloud Monitoring) inside GKE MODULE
-# ============================================================================
-
-resource "google_project_iam_member" "gke_nodes_monitoring_viewer" {
-  project = var.gcp.project_id
-  role    = "roles/monitoring.viewer"
-  member  = "serviceAccount:${module.test_meli_gkecluster-standard.service_account_email}"
-}
-
-# ============================================================================
-# STORAGE PERMISSIONS (Granting Locust access to GCS buckets) inside GKE MODULE
-# ============================================================================
-
-# 1. Permission for the Configuration Bucket
-# This allows the GKE nodes to download the config.json file.
-resource "google_storage_bucket_iam_member" "read_locust_config" {
-  bucket = var.buckets.config_name  # <--- Dynamic Reference
-  role   = "roles/storage.objectViewer"
-  member = "serviceAccount:${module.test_meli_gkecluster-standard.service_account_email}"
-}
-
-# 2. Permission for the Data Bucket (Payloads)
-# This allows the GKE nodes to download the heavy .jsonl data files.
-resource "google_storage_bucket_iam_member" "read_locust_data" {
-  bucket = var.buckets.data_name    # <--- Dynamic Reference
-  role   = "roles/storage.objectViewer"
-  member = "serviceAccount:${module.test_meli_gkecluster-standard.service_account_email}"
-}
 
 # ============================================================================
 # 4. COMPUTE ENGINE MODULE (Jumpbox)
@@ -248,4 +193,4 @@ resource "google_project_iam_member" "jumpbox_storage_viewer" {
 }
 
 
-############# END OF GCP INFRASTRUCTURE LOGICAL LAYER ABOVE ################
+############# END OF GCP INFRASTRUCTURE - LOGICAL LAYER ABOVE ################
