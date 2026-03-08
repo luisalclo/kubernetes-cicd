@@ -9,12 +9,20 @@ on:
       - 'environments/gcp-env-demo/k8s-apps/**'
   workflow_dispatch: # Allows you to run it manually from GitHub
 
+# ============================================================================
+# CONCURRENCY (Auto-cancel previous redundant runs)
+# ============================================================================
+concurrency:
+  group: '${{ github.workflow }}-${{ github.ref }}'
+  cancel-in-progress: true
+
 jobs:
   k8s-deploy:
     name: 'Terraform Apply K8s Apps'
     runs-on: 'ubuntu-latest'
     environment: 'production'
 
+    # Required permissions for Workload Identity Federation
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -23,7 +31,7 @@ jobs:
       - name: 'Checkout Repo'
         uses: 'actions/checkout@v4' 
 
-      # 1. Authentication (Workload Identity magic remains intact)
+      # 1. Authentication
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v2'
