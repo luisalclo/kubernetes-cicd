@@ -40,7 +40,7 @@ gke_config = {
   sa_display_name   = "GKE Node Service"
   
   # --- Security & Access Control ---
-  authorized_cidr         = "172.16.0.0/16" # Example 172.16.0.0/16
+  authorized_cidr         = "0.0.0.0/0" # Example 172.16.0.0/16
   auth_cidr_name          = "Allow All (CI/CD Access)"
   
   # Toggle para Public/Private Endpoint
