@@ -29,7 +29,7 @@ output "vpc_subnet_lbs_name" {
 
 output "gke_cluster_name" {
   description = "The name of the created GKE cluster."
-  value       = module.test_meli_gkecluster-standard.cluster_name
+  value       = module.demo_gkecluster_gkecluster-standard.cluster_name
 }
 
 output "gke_standard_pool_name" {
