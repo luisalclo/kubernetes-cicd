@@ -72,15 +72,3 @@ variable "gke_config" {
     std_disk_type          = string
   })
 }
-
-variable "jumpbox" {
-  description = "Jumpbox VM configuration"
-  type = object({
-    name         = string
-    machine_type = string
-    image        = string
-    disk_size    = number
-    disk_type    = string
-    sa_id        = string
-  })
-}

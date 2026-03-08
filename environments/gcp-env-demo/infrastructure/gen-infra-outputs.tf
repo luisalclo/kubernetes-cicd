@@ -49,10 +49,3 @@ output "gke_cluster_ca_certificate" {
   value       = module.demo_gkecluster-standard.cluster_ca_certificate
   sensitive   = true
 }
-
-# --- COMPUTE ENGINE OUTPUTS ---
-
-output "jumpbox_ip" {
-  description = "The internal IP address of the Jumpbox VM (Private-only)."
-  value       = module.vm_instance_module.instance_private_ip 
-}

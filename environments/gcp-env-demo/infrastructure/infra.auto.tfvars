@@ -66,13 +66,3 @@ gke_config = {
   std_disk_size     = 100
   std_disk_type     = "pd-balanced"
 }
-
-# 6. Jumpbox Config
-jumpbox = {
-  name         = "jumpbox-admin-vm"
-  machine_type = "e2-medium"
-  image        = "debian-cloud/debian-12"
-  disk_size    = 50
-  disk_type    = "pd-balanced"
-  sa_id        = "jumpbox-admin-sa"
-}
