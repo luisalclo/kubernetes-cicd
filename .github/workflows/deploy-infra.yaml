@@ -4,12 +4,11 @@ on:
   push:
     branches:
       - 'main'
-    # Only wake up if there are changes in the infrastructure or modules.
+    # Only wake up if there are changes in the infrastructure or modules folder
     paths:
       - 'environments/gcp-env-demo/infrastructure/**'
       - 'modules/**'
   workflow_dispatch: # Allows you to run it manually from GitHub
-    # Added manual input to gate the apply step
     inputs:
       run_apply:
         description: 'Run Terraform Apply? (Check to create/modify infrastructure)'
@@ -17,20 +16,29 @@ on:
         type: boolean
         default: false
 
+# ============================================================================
+# CONCURRENCY (Auto-cancel previous redundant runs)
+# ============================================================================
+concurrency:
+  group: '${{ github.workflow }}-${{ github.ref }}'
+  cancel-in-progress: true
+
 jobs:
   terraform-deploy:
-    name: 'Terraform Apply'
+    name: 'Terraform Apply Infra'
     runs-on: 'ubuntu-latest'
     environment: 'production'
 
+    # Required permissions for Workload Identity Federation
     permissions:
       contents: 'read'
       id-token: 'write'
 
     steps:
-      - name: 'Checkout'
+      - name: 'Checkout Repo'
         uses: 'actions/checkout@v4' 
 
+      # 1. Authentication
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v2'
@@ -39,19 +47,21 @@ jobs:
           workload_identity_provider: 'projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/providers/github'
           project_id: 'developer-sandbox-489120'
 
-      - name: 'Set up Terraform'
-        uses: 'hashicorp/setup-terraform@v3'
+      # 2. Install Terraform on the GitHub runner
+      - name: 'Setup Terraform'
+        uses: hashicorp/setup-terraform@v3
 
+      # 3. Initialize Terraform (downloads GCP providers)
       - name: 'Terraform Init'
         working-directory: environments/gcp-env-demo/infrastructure
         run: terraform init
 
-      # Always run a plan so we can see what will change (Dry-run)
+      # 4. Always run a plan so we can see what will change (Dry-run)
       - name: 'Terraform Plan'
         working-directory: environments/gcp-env-demo/infrastructure
         run: terraform plan
 
-      # The "Freno de Mano" / Manual Gate
+      # 5. The Manual Gate
       # This step will ONLY execute if triggered manually via GitHub Actions UI AND the checkbox is ticked
       - name: 'Terraform Apply'
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_apply == true }}
