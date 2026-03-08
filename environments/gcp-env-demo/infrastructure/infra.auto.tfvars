@@ -54,15 +54,15 @@ gke_config = {
   # --- Cluster Ops ---
   remove_default_pool     = true
   initial_node_count      = 1
-  node_locations          = ["us-central1-a", "us-central1-b", "us-central1-f"]
+  node_locations          = ["us-central1-a", "us-central1-b"]
   release_channel         = "STABLE"
   logging_service         = "logging.googleapis.com/kubernetes"
   monitoring_service      = "monitoring.googleapis.com/kubernetes"
   
   # Node Pool
   std_pool_name     = "gke-pool-standard"
-  std_node_count    = 4
-  std_machine_type  = "n1-standard-16"
+  std_node_count    = 1
+  std_machine_type  = "e2-standard-2"
   std_disk_size     = 100
   std_disk_type     = "pd-balanced"
 }
