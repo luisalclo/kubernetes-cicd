@@ -27,7 +27,7 @@ jobs:
   terraform-deploy:
     name: 'Terraform Apply Infra'
     runs-on: 'ubuntu-latest'
-    environment: 'production'
+    environment: 'demo'
 
     # Required permissions for Workload Identity Federation
     permissions:

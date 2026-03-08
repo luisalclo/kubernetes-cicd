@@ -20,7 +20,7 @@ jobs:
   k8s-deploy:
     name: 'Terraform Apply K8s Apps'
     runs-on: 'ubuntu-latest'
-    environment: 'production'
+    environment: 'demo'
 
     # Required permissions for Workload Identity Federation
     permissions:
