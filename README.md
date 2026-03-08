@@ -16,7 +16,13 @@ The system is designed to manage the full lifecycle of a GKE-based environment w
 *   **GCP Networking:** Custom VPC with isolated subnets for GKE Nodes, Services, and Management (Jumpbox).
 *   **GKE Compute:** A Google Kubernetes Engine (GKE) **Standard** Cluster with private nodes and master authorized networks.
 *   **Security & Identity:** **Keyless Authentication** using Workload Identity Federation (WIF) and direct principal bindings.
-*   **GKE Workloads:** Automated deployment of microservices (Bookinfo) via the Terraform `kubernetes` provider.
+*   **GKE Workloads:** Automated deployment of the **Bookinfo** microservices suite via the Terraform `kubernetes` provider.
+
+### 🧩 Why Bookinfo? (Simple but Powerful)
+For this demo, we selected the **Bookinfo** application because it provides a realistic view of a **Polyglot Microservices Architecture**:
+*   **Diverse Runtimes:** It includes four services written in different languages (**Python, Java, Ruby, and Node.js**), proving GKE's versatility for any runtime.
+*   **Chain of Communication:** It features a complex flow (`Productpage` -> `Details` & `Reviews` -> `Ratings`), perfect for demonstrating internal DNS and Service discovery.
+*   **Versioning Support:** With three versions of the `Reviews` service (v1, v2, v3), we can showcase GKE's power to handle multiple versions and traffic distribution directly via Terraform.
 
 ---
 
