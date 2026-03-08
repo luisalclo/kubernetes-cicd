@@ -134,7 +134,7 @@ module "demo_gkecluster-standard" {
 resource "google_project_iam_member" "gke_nodes_artifact_registry" {
   project = var.gcp.project_id
   role    = "roles/artifactregistry.reader"
-  member  = "serviceAccount:${module.test_meli_gkecluster-standard.service_account_email}"
+  member  = "serviceAccount:${module.demo_gkecluster-standard.service_account_email}"
 }
 
 

@@ -41,12 +41,12 @@ output "gke_cluster_endpoint" {
   description = "The public endpoint of the GKE cluster master."
   # Wrapping the value in nonsensitive() to explicitly allow displaying the IP 
   # in plain text, overriding the module's sensitive marking.
-  value       = nonsensitive(module.test_meli_gkecluster-standard.cluster_endpoint)
+  value       = nonsensitive(module.demo_gkecluster-standard.cluster_endpoint)
 }
 
 output "gke_cluster_ca_certificate" {
   description = "The cluster CA certificate (base64)."
-  value       = module.test_meli_gkecluster-standard.cluster_ca_certificate
+  value       = module.demo_gkecluster-standard.cluster_ca_certificate
   sensitive   = true
 }
 
