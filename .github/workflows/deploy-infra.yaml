@@ -9,6 +9,13 @@ on:
       - 'environments/gcp-env-demo/infrastructure/**'
       - 'modules/**'
   workflow_dispatch: # Allows you to run it manually from GitHub
+    # Added manual input to gate the apply step
+    inputs:
+      run_apply:
+        description: 'Run Terraform Apply? (Check to create/modify infrastructure)'
+        required: true
+        type: boolean
+        default: false
 
 jobs:
   terraform-deploy:
@@ -39,6 +46,14 @@ jobs:
         working-directory: environments/gcp-env-demo/infrastructure
         run: terraform init
 
+      # Always run a plan so we can see what will change (Dry-run)
+      - name: 'Terraform Plan'
+        working-directory: environments/gcp-env-demo/infrastructure
+        run: terraform plan
+
+      # The "Freno de Mano" / Manual Gate
+      # This step will ONLY execute if triggered manually via GitHub Actions UI AND the checkbox is ticked
       - name: 'Terraform Apply'
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_apply == true }}
         working-directory: environments/gcp-env-demo/infrastructure
         run: terraform apply -auto-approve
