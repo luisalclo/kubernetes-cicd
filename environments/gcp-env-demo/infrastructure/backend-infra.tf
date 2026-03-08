@@ -1,4 +1,4 @@
-# repo../kubernetes-cicd/terraform/environments/infra/backend.tf - Tests
+# repo../kubernetes-cicd/terraform/environments/infra/backend.tf
 
 terraform {
   backend "gcs" {
