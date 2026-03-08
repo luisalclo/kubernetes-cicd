@@ -1,4 +1,4 @@
-name: 'Deploy K8s Apps (Terraform)'
+name: 'Deploy K8s Apps (Terraform) Test'
 
 on:
   push:
