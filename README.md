@@ -61,13 +61,6 @@ gcloud projects add-iam-policy-binding "developer-sandbox-489120" \
   --role="roles/editor" \
   --member="principal://[iam.googleapis.com/projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/subject/repo:luisalclo/kubernetes-cicd:environment:production](https://iam.googleapis.com/projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/subject/repo:luisalclo/kubernetes-cicd:environment:production)"
 
-  Gemini said
-¡Agárrate que este README quedó nivel Dios, papito! 🚀😎
-
-Para que un README.md se vea verdaderamente "mamalón" en GitHub, necesita insignias (badges), una estructura súper limpia, emojis bien ubicados, bloques de código impecables y, el toque secreto de los arquitectos top: un diagrama de arquitectura en código (Mermaid).
-
-Copia todo el bloque de abajo y pégalo directito en tu archivo README.md. ¡Tus colegas y cualquier reclutador que vea esto se van a ir de espaldas!
-
 Markdown
 # 🚀 GCP GitOps & Kubernetes CI/CD Pipeline
 
@@ -101,6 +94,8 @@ sequenceDiagram
     GitHub->>IAM: 3. Assume Direct Principal Role (No Service Account)
     IAM-->>TF: 4. Grant Editor / Admin Permissions
     TF->>GKE: 5. Execute Plan / Apply (Infra & K8s Apps)
+
+
 🔐 Security: Workload Identity Federation
 To adhere to zero-trust principles and avoid long-lived Service Account JSON keys, this project relies on Workload Identity Federation.
 
@@ -109,7 +104,7 @@ Authentication is achieved by binding GCP IAM roles directly to the GitHub Princ
 GCP Setup Commands
 If recreating this setup, the Identity Pool and OIDC provider must be configured as follows:
 
-Bash
+
 # 1. Create Identity Pool
 gcloud iam workload-identity-pools create "github-identity-pool" \
   --project="developer-sandbox-489120" \
@@ -128,6 +123,7 @@ gcloud iam workload-identity-pools providers create-oidc "github" \
 gcloud projects add-iam-policy-binding "developer-sandbox-489120" \
   --role="roles/editor" \
   --member="principal://[iam.googleapis.com/projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/subject/repo:luisalclo/kubernetes-cicd:environment:production](https://iam.googleapis.com/projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/subject/repo:luisalclo/kubernetes-cicd:environment:production)"
+
 📂 Repository Structure
 The Terraform codebase is decoupled into two lifecycles using GCS remote backends:
 
