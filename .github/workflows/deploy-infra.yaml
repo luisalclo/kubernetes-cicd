@@ -38,7 +38,7 @@ jobs:
       - name: 'Checkout Repo'
         uses: 'actions/checkout@v4' 
 
-      # 1. Authentication
+      # 1. Authentication (Added explicit Service Account for state bucket access)
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v2'
@@ -46,6 +46,8 @@ jobs:
           create_credentials_file: true
           workload_identity_provider: 'projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/providers/github'
           project_id: 'developer-sandbox-489120'
+          # REPLACE THE EMAIL BELOW WITH YOUR ACTUAL GITHUB ACTIONS SERVICE ACCOUNT
+          service_account: 'YOUR_GITHUB_ACTIONS_SA@developer-sandbox-489120.iam.gserviceaccount.com'
 
       # 2. Install Terraform on the GitHub runner
       - name: 'Setup Terraform'
@@ -62,7 +64,6 @@ jobs:
         run: terraform plan
 
       # 5. The Manual Gate
-      # This step will ONLY execute if triggered manually via GitHub Actions UI AND the checkbox is ticked
       - name: 'Terraform Apply'
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_apply == true }}
         working-directory: environments/gcp-env-demo/infrastructure
