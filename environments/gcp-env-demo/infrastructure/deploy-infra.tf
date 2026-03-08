@@ -11,7 +11,7 @@ module "vpc_network" {
   project_id = var.gcp.project_id
   gcp_region = var.gcp.region
 
-  # --- VPC Configuration for any resource ---
+  # --- VPC Configuration ---
   vpc = {
     create                  = true
     network_name            = var.network.name
