@@ -62,7 +62,7 @@ module "demo_gkecluster-standard" {
   cluster_name = var.gke_config.name
   location     = var.gcp.region
 
-  # --- Network Integration ---
+  # --- Network Integration - Resources---
   network_name    = module.vpc_network.network_name
   subnetwork_name = module.vpc_network.subnet_02_name
 
