@@ -34,7 +34,7 @@ output "gke_cluster_name" {
 
 output "gke_standard_pool_name" {
   description = "The name of the standard node pool."
-  value       = module.test_meli_gkecluster-standard.standard_node_pool_name
+  value       = module.demo_gkecluster-standard.standard_node_pool_name
 }
 
 output "gke_cluster_endpoint" {

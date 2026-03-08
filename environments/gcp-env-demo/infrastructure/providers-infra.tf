@@ -1,4 +1,4 @@
-# Define the required Google Cloud provider for MELI-FIRESTORE GCP Infrastructure
+# Define the required Google Cloud provider for DEMO GCP Infrastructure
 
 terraform {
   required_providers {

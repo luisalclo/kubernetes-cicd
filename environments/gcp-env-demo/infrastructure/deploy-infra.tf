@@ -55,7 +55,7 @@ resource "google_compute_firewall" "allow_iap_ssh" {
 # 3. GKE CLUSTER MODULE (Standard)
 # ============================================================================
 
-module "test_meli_gkecluster-standard" {
+module "demo_gkecluster-standard" {
   source = "../../../modules/gke"
 
   project_id   = var.gcp.project_id
