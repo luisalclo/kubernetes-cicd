@@ -28,7 +28,7 @@ gke_config = {
   master_cidr       = "172.16.0.32/28"
   cluster_cidr      = "10.136.0.0/14"
   services_cidr     = "34.118.224.0/20"
-  min_version       = "1.33.5-gke.1125000"
+  min_version       = "1.34.3-gke.1318000"
 
   # --- Maintenance ---
   maintenance_start_time = "2023-01-01T06:00:00Z"
