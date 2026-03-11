@@ -1,4 +1,4 @@
-############# BOOKINFO COMPLETE K8S ARCHITECTURE (HCL)################
+############# BOOKINFO COMPLETE K8S ARCHITECTURE (HCL) - Test################
 
 # ============================================================================
 # 1. NAMESPACE
