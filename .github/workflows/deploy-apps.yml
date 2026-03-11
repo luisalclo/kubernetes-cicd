@@ -1,5 +1,10 @@
 name: 'Deploy K8s Apps (Terraform)'
 
+# ============================================================================
+# RUN NAME: Dynamic title for the Actions execution list
+# ============================================================================
+run-name: "${{ github.event_name == 'workflow_dispatch' && 'Post Review: Full K8s App Deployment' || 'General Review: K8s App Validation' }}"
+
 on:
   push:
     branches:
@@ -19,12 +24,13 @@ on:
 # CONCURRENCY (Auto-cancel previous redundant runs)
 # ============================================================================
 concurrency:
-  group: '${{ github.workflow }}-${{ github.ref }}'
+  group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
 
 jobs:
   k8s-deploy:
-    name: 'Terraform Apply K8s Apps'
+    # 👇 DYNAMIC JOB NAME: Clean text for the sidebar (Wrapped in quotes to avoid YAML errors)
+    name: "${{ github.event_name == 'workflow_dispatch' && 'Post Review: Apply Changes' || 'General Review: Validation Plan' }}"
     runs-on: 'ubuntu-latest'
     # Must match the environment specified in your GCP Workload Identity principal
     environment: 'production'
@@ -63,6 +69,6 @@ jobs:
 
       # 5. Deploy the app (Only triggers via manual workflow_dispatch with run_apply=true)
       - name: 'Terraform Apply'
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_apply == true }}
+        if: "${{ github.event_name == 'workflow_dispatch' && inputs.run_apply == true }}"
         working-directory: environments/gcp-env-demo/k8s-apps
         run: terraform apply -auto-approve
