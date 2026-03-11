@@ -21,6 +21,12 @@ on:
         default: false
 
 # ============================================================================
+# GLOBAL ENVIRONMENT VARIABLES
+# ============================================================================
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true' # Removes Node.js 20 deprecation warnings
+
+# ============================================================================
 # CONCURRENCY (Auto-cancel previous redundant runs)
 # ============================================================================
 concurrency:
@@ -29,7 +35,7 @@ concurrency:
 
 jobs:
   k8s-deploy:
-    # 👇 DYNAMIC JOB NAME: Clean text for the sidebar (Wrapped in quotes to avoid YAML errors)
+    # 👇 DYNAMIC JOB NAME: Clean text for the sidebar
     name: "${{ github.event_name == 'workflow_dispatch' && 'Post Review: Apply Changes' || 'General Review: Validation Plan' }}"
     runs-on: 'ubuntu-latest'
     # Must match the environment specified in your GCP Workload Identity principal
