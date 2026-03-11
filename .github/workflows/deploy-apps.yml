@@ -7,7 +7,13 @@ on:
     # Only wake up if there are changes in the apps folder
     paths:
       - 'environments/gcp-env-demo/k8s-apps/**'
-  workflow_dispatch: # Allows you to run it manually from GitHub
+  workflow_dispatch:
+    inputs:
+      run_apply:
+        description: 'Run Terraform Apply? (Check to modify K8s apps)'
+        required: true
+        type: boolean
+        default: false
 
 # ============================================================================
 # CONCURRENCY (Auto-cancel previous redundant runs)
@@ -50,7 +56,13 @@ jobs:
         working-directory: environments/gcp-env-demo/k8s-apps
         run: terraform init
 
-      # 4. Deploy the app (auto-approve bypasses manual confirmation)
+      # 4. Generate Execution Plan (For auditing purposes)
+      - name: 'Terraform Plan'
+        working-directory: environments/gcp-env-demo/k8s-apps
+        run: terraform plan
+
+      # 5. Deploy the app (Only triggers via manual workflow_dispatch with run_apply=true)
       - name: 'Terraform Apply'
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_apply == true }}
         working-directory: environments/gcp-env-demo/k8s-apps
         run: terraform apply -auto-approve

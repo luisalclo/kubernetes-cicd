@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'main'
+    # Triggered only when infrastructure or shared modules are modified
     paths:
       - 'environments/gcp-env-demo/infrastructure/**'
       - 'modules/**'
@@ -15,6 +16,9 @@ on:
         type: boolean
         default: false
 
+# ============================================================================
+# CONCURRENCY (Auto-cancel previous redundant runs)
+# ============================================================================
 concurrency:
   group: '${{ github.workflow }}-${{ github.ref }}'
   cancel-in-progress: true
@@ -23,9 +27,10 @@ jobs:
   terraform-deploy:
     name: 'Terraform Apply Infra'
     runs-on: 'ubuntu-latest'
-    # 👇 Nos rendimos ante tu compa: usamos production 👇
+    # Must match the environment specified in your GCP Workload Identity principal
     environment: 'production'
 
+    # Required permissions for Workload Identity Federation
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -34,6 +39,7 @@ jobs:
       - name: 'Checkout Repo'
         uses: 'actions/checkout@v4' 
 
+      # 1. Authentication (Direct Workload Identity Pool authentication)
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v2'
@@ -41,19 +47,23 @@ jobs:
           create_credentials_file: true
           workload_identity_provider: 'projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/providers/github'
           project_id: 'developer-sandbox-489120'
-          # (Aquí NO ponemos service_account porque tu compa usó el principal directo)
+          # NOTE: No service_account parameter required (Direct Principal Auth)
 
+      # 2. Install Terraform on the GitHub runner
       - name: 'Setup Terraform'
         uses: hashicorp/setup-terraform@v3
 
+      # 3. Initialize Terraform (Networking, GKE, and State Bucket)
       - name: 'Terraform Init'
         working-directory: environments/gcp-env-demo/infrastructure
         run: terraform init
 
+      # 4. Generate Execution Plan (For auditing purposes)
       - name: 'Terraform Plan'
         working-directory: environments/gcp-env-demo/infrastructure
         run: terraform plan
 
+      # 5. Deploy Infrastructure (Only triggers via manual workflow_dispatch with run_apply=true)
       - name: 'Terraform Apply'
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_apply == true }}
         working-directory: environments/gcp-env-demo/infrastructure
