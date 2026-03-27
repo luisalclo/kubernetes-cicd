@@ -227,11 +227,14 @@ This guide provides a structured flow to demonstrate the full lifecycle of the p
 
 For development or cost-control purposes, this repository includes a **"Nuke" pipeline** (`nuke-destroy-envs.yaml`) designed to completely tear down the environment in the correct dependency order.
 
+⚠️ **Manual Trigger Only**: Unlike the deployment pipelines, this workflow **never** runs automatically on code changes. It must be manually invoked from the **GitHub Actions** tab.
+
 ### 🛡️ Safety First (Dry Run Capability)
 The pipeline is designed with a **"Look Before You Leap"** approach:
-1.  **Confirmation Required**: You must manually type `DESTROY` in the workflow input.
-2.  **Dry Run by Default**: If the `run_destroy` checkbox is **unchecked**, the pipeline will only execute `terraform plan -destroy`. This allows you to inspect the logs and see exactly which resources (VPC, GKE, Services) would be deleted without actually touching them.
-3.  **Two-Step Execution**: Only when `run_destroy` is **checked** will the `terraform destroy` and state cleanup commands run.
+1.  **Manual Invocation**: Go to **Actions** > **🧨 NUKE: Destroy All Environments** > **Run workflow**.
+2.  **Confirmation Required**: You must manually type `DESTROY` in the workflow input.
+3.  **Dry Run by Default**: If the `run_destroy` checkbox is **unchecked**, the pipeline will only execute `terraform plan -destroy`. This allows you to inspect the logs and see exactly which resources (VPC, GKE, Services) would be deleted without actually touching them.
+4.  **Two-Step Execution**: Only when `run_destroy` is **checked** will the `terraform destroy` and state cleanup commands run.
 
 ### 🔄 What is Destroyed?
 *   **Layer 1 (Apps)**: All Kubernetes deployments, services, and ingresses (Bookinfo).
