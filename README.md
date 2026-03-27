@@ -222,4 +222,26 @@ This guide provides a structured flow to demonstrate the full lifecycle of the p
 | **GKE 401 Unauth** | Cluster connectivity | Check if `master_authorized_networks` allows the GitHub Runner IP (currently set to 0.0.0.0/0). |
 
 ---
+
+## 🧨 Environment Cleanup (Nuke Option)
+
+For development or cost-control purposes, this repository includes a **"Nuke" pipeline** (`nuke-destroy-envs.yaml`) designed to completely tear down the environment in the correct dependency order.
+
+### 🛡️ Safety First (Dry Run Capability)
+The pipeline is designed with a **"Look Before You Leap"** approach:
+1.  **Confirmation Required**: You must manually type `DESTROY` in the workflow input.
+2.  **Dry Run by Default**: If the `run_destroy` checkbox is **unchecked**, the pipeline will only execute `terraform plan -destroy`. This allows you to inspect the logs and see exactly which resources (VPC, GKE, Services) would be deleted without actually touching them.
+3.  **Two-Step Execution**: Only when `run_destroy` is **checked** will the `terraform destroy` and state cleanup commands run.
+
+### 🔄 What is Destroyed?
+*   **Layer 1 (Apps)**: All Kubernetes deployments, services, and ingresses (Bookinfo).
+*   **Layer 2 (Infra)**: The GKE cluster, VPC, Subnets, Firewalls, and Bastion host.
+*   **Terraform State**: The `.tfstate` files in the GCS bucket are removed to ensure a clean slate for the next deployment.
+
+### 🔑 What Stays Alive? (Bootstrap Resources)
+To ensure you can redeploy the environment later without manual GCP console intervention, the following resources **are NOT touched**:
+*   **Workload Identity Federation (WIF)**: The Identity Pool and Provider remain active.
+*   **GCS Bucket**: The bucket itself is preserved, though the state files inside are cleared.
+
+---
 *Developed as a GitOps reference for GCP & Kubernetes.*
