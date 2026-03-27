@@ -24,14 +24,16 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Google Auth (WIF)
-        uses: google-github-actions/auth@v2
+      # 👇 FIXED: Direct WIF Authentication (No Service Account)
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
         with:
+          create_credentials_file: true
           workload_identity_provider: 'projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/providers/github'
-          service_account: 'github-actions-sa@developer-sandbox-489120.iam.gserviceaccount.com'
+          project_id: 'developer-sandbox-489120'
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
 
       - name: 🔍 Plan Destroy K8s Apps
         working-directory: environments/gcp-env-demo/k8s-apps
@@ -52,20 +54,21 @@ jobs:
     name: "🧨 Step 2: Destroy K8s Apps"
     needs: plan-destruction
     runs-on: ubuntu-latest
-    # This environment pauses the pipeline and waits for manual approval
     environment: nuke-approval 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Google Auth (WIF)
-        uses: google-github-actions/auth@v2
+      # 👇 FIXED: Direct WIF Authentication
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
         with:
+          create_credentials_file: true
           workload_identity_provider: 'projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/providers/github'
-          service_account: 'github-actions-sa@developer-sandbox-489120.iam.gserviceaccount.com'
+          project_id: 'developer-sandbox-489120'
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
 
       - name: 🧨 Destroy K8s Apps
         working-directory: environments/gcp-env-demo/k8s-apps
@@ -84,14 +87,16 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Google Auth (WIF)
-        uses: google-github-actions/auth@v2
+      # 👇 FIXED: Direct WIF Authentication
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
         with:
+          create_credentials_file: true
           workload_identity_provider: 'projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/providers/github'
-          service_account: 'github-actions-sa@developer-sandbox-489120.iam.gserviceaccount.com'
+          project_id: 'developer-sandbox-489120'
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
 
       - name: 🧨 Destroy Infrastructure
         working-directory: environments/gcp-env-demo/infrastructure
