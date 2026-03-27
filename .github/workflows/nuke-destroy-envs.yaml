@@ -1,65 +1,59 @@
-name: "🧨 NUKE: Destroy All Environments"
+name: "🧨 NUKE: Plan & Destroy Environments"
 
+# ============================================================================
+# TRIGGERS: Manual execution only
+# ============================================================================
 on:
   workflow_dispatch:
-    inputs:
-      confirm_destruction:
-        description: 'Type "DESTROY" to confirm'
-        required: true
-        default: 'NO'
-      run_destroy:
-        description: 'Actually execute DESTROY? (Uncheck for Dry Run/Plan)'
-        type: boolean
-        default: false
 
+# ============================================================================
+# PERMISSIONS: Required for OIDC / Workload Identity Federation
+# ============================================================================
 permissions:
   contents: read
   id-token: write
 
 jobs:
-  nuke-apps:
-    name: "Step 1: K8s Apps (Plan/Destroy)"
-    if: github.event.inputs.confirm_destruction == 'DESTROY'
+# ============================================================================
+# PHASE 1: PLAN (Dry Run for both Apps and Infrastructure)
+# ============================================================================
+  plan-destruction:
+    name: "🔍 Step 1: Terraform Plan (Dry Run)"
     runs-on: ubuntu-latest
-    environment: production
-    defaults:
-      run:
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Google Auth (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/providers/github'
+          service_account: 'github-actions-sa@developer-sandbox-489120.iam.gserviceaccount.com'
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: 🔍 Plan Destroy K8s Apps
         working-directory: environments/gcp-env-demo/k8s-apps
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+        run: |
+          terraform init
+          terraform plan -destroy
 
-      - name: Google Auth (WIF)
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: 'projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/providers/github'
-          service_account: 'github-actions-sa@developer-sandbox-489120.iam.gserviceaccount.com'
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform Init
-        run: terraform init
-
-      - name: Terraform Plan Destroy (See what will happen)
-        run: terraform plan -destroy
-
-      - name: Terraform Destroy Apps (Execution)
-        if: github.event.inputs.run_destroy == 'true'
-        run: terraform destroy -auto-approve
-
-  nuke-infra:
-    name: "Step 2: Infrastructure (Plan/Destroy)"
-    needs: nuke-apps
-    if: |
-      always() && 
-      github.event.inputs.confirm_destruction == 'DESTROY' && 
-      (needs.nuke-apps.result == 'success' || github.event.inputs.run_destroy == 'false')
-    runs-on: ubuntu-latest
-    environment: production
-    defaults:
-      run:
+      - name: 🔍 Plan Destroy Infrastructure
         working-directory: environments/gcp-env-demo/infrastructure
+        run: |
+          terraform init
+          terraform plan -destroy
+
+# ============================================================================
+# PHASE 2: DESTROY APPS (Requires Manual Approval in GitHub Environments)
+# ============================================================================
+  destroy-apps:
+    name: "🧨 Step 2: Destroy K8s Apps"
+    needs: plan-destruction
+    runs-on: ubuntu-latest
+    # This environment pauses the pipeline and waits for manual approval
+    environment: nuke-approval 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -73,32 +67,42 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
-      - name: Terraform Init
-        run: terraform init
+      - name: 🧨 Destroy K8s Apps
+        working-directory: environments/gcp-env-demo/k8s-apps
+        run: |
+          terraform init
+          terraform destroy -auto-approve
 
-      - name: Terraform Plan Destroy (See what will happen)
-        run: terraform plan -destroy
-
-      - name: Terraform Destroy Infra (Execution)
-        if: github.event.inputs.run_destroy == 'true'
-        run: terraform destroy -auto-approve
-
-  cleanup-states:
-    name: "Step 3: Cleanup GCS States"
-    needs: nuke-infra
-    if: github.event.inputs.run_destroy == 'true' && needs.nuke-infra.result == 'success'
+# ============================================================================
+# PHASE 3: DESTROY INFRASTRUCTURE & CLEANUP (Runs automatically after Apps)
+# ============================================================================
+  destroy-infra:
+    name: "🧨 Step 3: Destroy Infrastructure & Cleanup"
+    needs: destroy-apps
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Google Auth (WIF)
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: 'projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/providers/github'
           service_account: 'github-actions-sa@developer-sandbox-489120.iam.gserviceaccount.com'
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: 🧨 Destroy Infrastructure
+        working-directory: environments/gcp-env-demo/infrastructure
+        run: |
+          terraform init
+          terraform destroy -auto-approve
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Delete State Files from GCS
+      - name: 🧹 Delete State Files from GCS
         run: |
           echo "Cleaning up Terraform state files..."
           gsutil rm gs://gcp-demo-gkefeb2026/env/gcp-env-demo/infrastructure/default.tfstate || true
