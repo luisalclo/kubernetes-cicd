@@ -137,4 +137,17 @@ resource "google_project_iam_member" "gke_nodes_artifact_registry" {
   member  = "serviceAccount:${module.demo_gkecluster-standard.service_account_email}"
 }
 
+# ============================================================================
+# 5. ARTIFACT REGISTRY MODULE
+# ============================================================================
+
+module "artifact_registry" {
+  source = "../../../modules/artifact-registry"
+
+  project_id    = var.gcp.project_id
+  region        = var.gcp.region
+  repository_id = "bookinfo-repo"
+  description   = "Docker repository for Bookinfo application images"
+}
+
 ############# END OF GCP INFRASTRUCTURE - LOGICAL LAYER ABOVE ################

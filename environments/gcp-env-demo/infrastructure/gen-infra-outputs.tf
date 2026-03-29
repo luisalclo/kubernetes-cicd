@@ -49,3 +49,10 @@ output "gke_cluster_ca_certificate" {
   value       = module.demo_gkecluster-standard.cluster_ca_certificate
   sensitive   = true
 }
+
+# --- ARTIFACT REGISTRY OUTPUTS ---
+
+output "artifact_registry_url" {
+  description = "The full URL of the Artifact Registry repository."
+  value       = module.artifact_registry.repository_url
+}
