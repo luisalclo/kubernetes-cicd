@@ -20,13 +20,13 @@ jobs:
   plan-destruction:
     name: "🔍 Step 1: Terraform Plan (Dry Run)"
     runs-on: ubuntu-latest
-    # 👇 AÑADIDO: Declarar el entorno para que coincida con la regla de GCP IAM
+    # ADDED: Declare the environment to match the GCP IAM rule
     environment: production
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 👇 FIXED: Direct WIF Authentication (No Service Account)
+      # Direct WIF Authentication (No Service Account)
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
         with:
@@ -56,13 +56,13 @@ jobs:
     name: "Step 2: Destroy K8s Apps"
     needs: plan-destruction
     runs-on: ubuntu-latest
-    # 👇 MODIFICADO: Cambiado a production para no perder los permisos de GCP
+    # MODIFIED: Changed to production to retain GCP permissions
     environment: production 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 👇 FIXED: Direct WIF Authentication
+      # Direct WIF Authentication
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
         with:
@@ -86,13 +86,13 @@ jobs:
     name: "Step 3: Destroy Infrastructure & Cleanup"
     needs: destroy-apps
     runs-on: ubuntu-latest
-    # 👇 AÑADIDO: Necesario también aquí para mantener la autenticación
+    # ADDED: Required here as well to maintain authentication
     environment: production
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 👇 FIXED: Direct WIF Authentication
+      # Direct WIF Authentication
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
         with:
@@ -112,7 +112,7 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: 🧹 Delete State Files from GCS
+      - name: Delete State Files from GCS
         run: |
           echo "Cleaning up Terraform state files..."
           gsutil rm gs://gcp-demo-gkefeb2026/env/gcp-env-demo/infrastructure/default.tfstate || true
