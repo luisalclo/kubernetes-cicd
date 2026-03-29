@@ -38,4 +38,3 @@ spec:
     - name: http
       port: 9080
       targetPort: 9080
-# Trigger automatic pipeline
