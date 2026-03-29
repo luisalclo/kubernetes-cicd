@@ -18,11 +18,9 @@ on:
 env:
   PROJECT_ID: 'developer-sandbox-489120'
   REGION: 'us-central1'
-  GKE_CLUSTER: 'demo-cluster'
   GKE_ZONE: 'us-central1'
   WIF_PROVIDER: 'projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/providers/github'
-  # We use a single shared Artifact Registry repository for all apps
-  REGISTRY: 'us-central1-docker.pkg.dev/developer-sandbox-489120/bookinfo-repo'
+  # GKE_CLUSTER and REGISTRY are now dynamically fetched from Terraform state
 
 # ============================================================================
 # JOBS DEFINITION
@@ -58,19 +56,42 @@ jobs:
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
 
       # ============================================================================
-      # 3. BUILD IMAGE
+      # 3. FETCH DYNAMIC INFRASTRUCTURE STATE
+      # ============================================================================
+      - name: 'Setup Terraform'
+        uses: hashicorp/setup-terraform@v3
+
+      - name: 'Fetch Terraform Outputs'
+        id: tf_outputs
+        working-directory: environments/gcp-env-demo/infrastructure
+        run: |
+          terraform init
+          
+          # Extract dynamic values from Terraform State
+          TF_CLUSTER_NAME=$(terraform output -raw gke_cluster_name)
+          TF_REGISTRY_URL=$(terraform output -raw artifact_registry_url)
+          
+          echo "Discovered Cluster: $TF_CLUSTER_NAME"
+          echo "Discovered Registry: $TF_REGISTRY_URL"
+          
+          # Inject them into GitHub Actions environment for subsequent steps
+          echo "GKE_CLUSTER=$TF_CLUSTER_NAME" >> $GITHUB_ENV
+          echo "REGISTRY=$TF_REGISTRY_URL" >> $GITHUB_ENV
+
+      # ============================================================================
+      # 4. BUILD IMAGE
       # ============================================================================
       - name: 'Build ${{ inputs.app_name }} Image'
         run: docker build -t ${{ env.REGISTRY }}/${{ inputs.app_name }}:${{ github.sha }} ${{ inputs.app_dir }}/
 
       # ============================================================================
-      # 4. PUSH IMAGE TO ARTIFACT REGISTRY
+      # 5. PUSH IMAGE TO ARTIFACT REGISTRY
       # ============================================================================
       - name: 'Push ${{ inputs.app_name }} to GAR'
         run: docker push ${{ env.REGISTRY }}/${{ inputs.app_name }}:${{ github.sha }}
 
       # ============================================================================
-      # 5. SECURITY SCAN (GCP CONTAINER ANALYSIS)
+      # 6. SECURITY SCAN (GCP CONTAINER ANALYSIS)
       # ============================================================================
       - name: 'Scan ${{ inputs.app_name }} Image'
         run: |
@@ -88,7 +109,7 @@ jobs:
           fi
 
       # ============================================================================
-      # 6. DEPLOY TO GKE
+      # 7. DEPLOY TO GKE
       # ============================================================================
       - name: 'Get GKE Credentials'
         uses: 'google-github-actions/get-gke-credentials@v2'
