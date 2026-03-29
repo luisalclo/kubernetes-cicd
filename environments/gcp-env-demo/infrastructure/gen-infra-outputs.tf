@@ -9,19 +9,9 @@ output "vpc_network_name" {
   value       = module.vpc_network.network_name
 }
 
-output "vpc_subnet_jumpbox_name" {
-  description = "The name of the Jumpbox subnetwork (Subnet 01)."
-  value       = module.vpc_network.subnet_01_name
-}
-
 output "vpc_subnet_gke_nodes_name" {
-  description = "The name of the GKE Nodes subnetwork (Subnet 02)."
+  description = "The name of the GKE Nodes subnetwork."
   value       = module.vpc_network.subnet_02_name
-}
-
-output "vpc_subnet_lbs_name" {
-  description = "The name of the Load Balancers subnetwork (Subnet 03)."
-  value       = module.vpc_network.subnet_03_name # Ensure your VPC module exports this
 }
 
 

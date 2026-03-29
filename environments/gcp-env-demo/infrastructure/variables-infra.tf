@@ -11,12 +11,8 @@ variable "network" {
   description = "VPC network and subnetwork configurations"
   type = object({
     name            = string
-    subnet_jumpbox  = string
-    cidr_jumpbox    = string
     subnet_gke      = string
     cidr_gke        = string
-    subnet_services = string
-    cidr_services   = string
   })
 }
 
@@ -72,3 +68,4 @@ variable "gke_config" {
     std_disk_type          = string
   })
 }
+

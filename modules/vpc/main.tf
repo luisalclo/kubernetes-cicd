@@ -12,21 +12,7 @@ resource "google_compute_network" "network" {
 }
 
 # ---------------------------------------------------------
-# Subnetwork 1 (e.g., for Jumpbox / General workloads)
-# ---------------------------------------------------------
-resource "google_compute_subnetwork" "subnet_01" {
-  name                     = var.vpc.subnet_01_name
-  ip_cidr_range            = var.vpc.subnet_01_cidr
-  region                   = var.gcp_region
-  # Dynamic reference to the network ID created above.
-  network                  = google_compute_network.network[0].id
-  count                    = var.vpc.create ? 1 : 0
-  project                  = var.project_id
-  private_ip_google_access = var.vpc.subnet_01_private_google_access
-}
-
-# ---------------------------------------------------------
-# Subnetwork 2 (e.g., for GKE Nodes / Databases)
+# Subnetwork (GKE Nodes)
 # ---------------------------------------------------------
 resource "google_compute_subnetwork" "subnet_02" {
   name                     = var.vpc.subnet_02_name
@@ -36,19 +22,6 @@ resource "google_compute_subnetwork" "subnet_02" {
   count                    = var.vpc.create ? 1 : 0
   project                  = var.project_id
   private_ip_google_access = var.vpc.subnet_02_private_google_access
-}
-
-# ---------------------------------------------------------
-# Subnetwork 3 (e.g., for Internal Load Balancers)
-# ---------------------------------------------------------
-resource "google_compute_subnetwork" "subnet_03" {
-  name                     = var.vpc.subnet_03_name
-  ip_cidr_range            = var.vpc.subnet_03_cidr
-  region                   = var.gcp_region
-  network                  = google_compute_network.network[0].id
-  count                    = var.vpc.create ? 1 : 0
-  project                  = var.project_id
-  private_ip_google_access = var.vpc.subnet_03_private_google_access
 }
 
 # ---------------------------------------------------------
