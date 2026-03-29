@@ -1,0 +1,108 @@
+name: 'Shared K8s App Pipeline'
+
+on:
+  workflow_call:
+    inputs:
+      app_name:
+        required: true
+        type: string
+        description: 'The name of the application (e.g., productpage, details)'
+      app_dir:
+        required: true
+        type: string
+        description: 'The directory containing the Dockerfile (e.g., src/bookinfo/productpage)'
+
+# ============================================================================
+# GLOBAL ENVIRONMENT VARIABLES
+# ============================================================================
+env:
+  PROJECT_ID: 'developer-sandbox-489120'
+  REGION: 'us-central1'
+  GKE_CLUSTER: 'demo-cluster'
+  GKE_ZONE: 'us-central1'
+  WIF_PROVIDER: 'projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/providers/github'
+  # We use a single shared Artifact Registry repository for all apps
+  REGISTRY: 'us-central1-docker.pkg.dev/developer-sandbox-489120/bookinfo-repo'
+
+# ============================================================================
+# JOBS DEFINITION
+# ============================================================================
+jobs:
+  build-scan-deploy:
+    name: "Deploy: ${{ inputs.app_name }}"
+    runs-on: 'ubuntu-latest'
+    environment: 'production'
+
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: 'Checkout Repo'
+        uses: 'actions/checkout@v4'
+
+      # 1. Authentication (Direct Workload Identity Pool authentication)
+      - name: 'Authenticate to Google Cloud'
+        id: 'auth'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          create_credentials_file: true
+          workload_identity_provider: '${{ env.WIF_PROVIDER }}'
+          project_id: '${{ env.PROJECT_ID }}'
+
+      # 2. Setup Google Cloud SDK and Docker Auth
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      - name: 'Docker Auth to GAR'
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      # ============================================================================
+      # 3. BUILD IMAGE
+      # ============================================================================
+      - name: 'Build ${{ inputs.app_name }} Image'
+        run: docker build -t ${{ env.REGISTRY }}/${{ inputs.app_name }}:${{ github.sha }} ${{ inputs.app_dir }}/
+
+      # ============================================================================
+      # 4. PUSH IMAGE TO ARTIFACT REGISTRY
+      # ============================================================================
+      - name: 'Push ${{ inputs.app_name }} to GAR'
+        run: docker push ${{ env.REGISTRY }}/${{ inputs.app_name }}:${{ github.sha }}
+
+      # ============================================================================
+      # 5. SECURITY SCAN (GCP CONTAINER ANALYSIS)
+      # ============================================================================
+      - name: 'Scan ${{ inputs.app_name }} Image'
+        run: |
+          echo "Scanning ${{ inputs.app_name }} image..."
+          gcloud artifacts docker images scan ${{ env.REGISTRY }}/${{ inputs.app_name }}:${{ github.sha }}
+          
+          echo "Checking for CRITICAL vulnerabilities..."
+          CRITICALS=$(gcloud artifacts docker images list-vulnerabilities ${{ env.REGISTRY }}/${{ inputs.app_name }}:${{ github.sha }} --filter="vulnerability.effectiveSeverity=CRITICAL" --format="value(vulnerability.effectiveSeverity)")
+          
+          if [ -n "$CRITICALS" ]; then
+            echo "🚨 CRITICAL vulnerabilities found! Failing pipeline."
+            exit 1
+          else
+            echo "✅ No CRITICAL vulnerabilities found. Proceeding."
+          fi
+
+      # ============================================================================
+      # 6. DEPLOY TO GKE
+      # ============================================================================
+      - name: 'Get GKE Credentials'
+        uses: 'google-github-actions/get-gke-credentials@v2'
+        with:
+          cluster_name: '${{ env.GKE_CLUSTER }}'
+          location: '${{ env.GKE_ZONE }}'
+
+      - name: 'Mutate Manifests with Kustomize'
+        working-directory: environments/gcp-env-demo/k8s-manifests
+        run: |
+          # Note: This edits the shared kustomization.yaml.
+          # Since the job runs synchronously for this specific app, it updates its specific image tag.
+          kustomize edit set image ${{ inputs.app_name }}-image=${{ env.REGISTRY }}/${{ inputs.app_name }}:${{ github.sha }}
+
+      - name: 'Deploy to K8s'
+        working-directory: environments/gcp-env-demo/k8s-manifests
+        run: kubectl apply -k .

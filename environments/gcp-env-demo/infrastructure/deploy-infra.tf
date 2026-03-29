@@ -150,4 +150,42 @@ module "artifact_registry" {
   description   = "Docker repository for Bookinfo application images"
 }
 
+# ============================================================================
+# CONTAINER ANALYSIS APIS & IAM
+# ============================================================================
+
+resource "google_project_service" "containeranalysis" {
+  project            = var.gcp.project_id
+  service            = "containeranalysis.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "containerscanning" {
+  project            = var.gcp.project_id
+  service            = "containerscanning.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "ondemandscanning" {
+  project            = var.gcp.project_id
+  service            = "ondemandscanning.googleapis.com"
+  disable_on_destroy = false
+}
+
+locals {
+  github_actions_principal = "principal://iam.googleapis.com/projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/subject/repo:luisalclo/kubernetes-cicd:environment:production"
+}
+
+resource "google_project_iam_member" "github_actions_ondemandscanning" {
+  project = var.gcp.project_id
+  role    = "roles/ondemandscanning.admin"
+  member  = local.github_actions_principal
+}
+
+resource "google_project_iam_member" "github_actions_containeranalysis" {
+  project = var.gcp.project_id
+  role    = "roles/containeranalysis.admin"
+  member  = local.github_actions_principal
+}
+
 ############# END OF GCP INFRASTRUCTURE - LOGICAL LAYER ABOVE ################

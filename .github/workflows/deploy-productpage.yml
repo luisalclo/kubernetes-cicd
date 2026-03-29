@@ -1,0 +1,21 @@
+name: 'Deploy: Productpage'
+
+on:
+  push:
+    branches:
+      - 'main'
+    paths:
+      - 'src/bookinfo/productpage/**'
+      - 'environments/gcp-env-demo/k8s-manifests/01-productpage.yaml'
+  workflow_dispatch:
+
+concurrency:
+  group: "productpage-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  call-shared-pipeline:
+    uses: ./.github/workflows/shared-k8s-app-pipeline.yml
+    with:
+      app_name: 'productpage'
+      app_dir: 'src/bookinfo/productpage'

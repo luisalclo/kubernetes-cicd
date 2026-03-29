@@ -1,0 +1,21 @@
+name: 'Deploy: Ratings'
+
+on:
+  push:
+    branches:
+      - 'main'
+    paths:
+      - 'src/bookinfo/ratings/**'
+      - 'environments/gcp-env-demo/k8s-manifests/04-ratings.yaml'
+  workflow_dispatch:
+
+concurrency:
+  group: "ratings-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  call-shared-pipeline:
+    uses: ./.github/workflows/shared-k8s-app-pipeline.yml
+    with:
+      app_name: 'ratings'
+      app_dir: 'src/bookinfo/ratings'

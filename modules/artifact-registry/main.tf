@@ -5,7 +5,7 @@ resource "google_artifact_registry_repository" "docker_repo" {
   description   = var.description
   format        = "DOCKER"
 
-  cleanup_policy {
+  cleanup_policies {
     id     = "keep-minimum-versions"
     action = "KEEP"
     most_recent_versions {
@@ -13,3 +13,4 @@ resource "google_artifact_registry_repository" "docker_repo" {
     }
   }
 }
+
