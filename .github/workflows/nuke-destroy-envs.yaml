@@ -15,7 +15,7 @@ permissions:
 
 jobs:
 # ============================================================================
-# PHASE 1: PLAN (Dry Run for both Apps and Infrastructure)
+# PHASE 1: PLAN (Dry Run for Infrastructure)
 # ============================================================================
   plan-destruction:
     name: "🔍 Step 1: Terraform Plan (Dry Run)"
@@ -37,12 +37,6 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
 
-      - name: 🔍 Plan Destroy K8s Apps
-        working-directory: environments/gcp-env-demo/k8s-apps
-        run: |
-          terraform init
-          terraform plan -destroy
-
       - name: 🔍 Plan Destroy Infrastructure
         working-directory: environments/gcp-env-demo/infrastructure
         run: |
@@ -50,41 +44,11 @@ jobs:
           terraform plan -destroy
 
 # ============================================================================
-# PHASE 2: DESTROY APPS (Requires Manual Approval in GitHub Environments)
-# ============================================================================
-  destroy-apps:
-    name: "Step 2: Destroy K8s Apps"
-    needs: plan-destruction
-    runs-on: ubuntu-latest
-    # MODIFIED: Changed to production to retain GCP permissions
-    environment: production 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      # Direct WIF Authentication
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v3
-        with:
-          create_credentials_file: true
-          workload_identity_provider: 'projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/providers/github'
-          project_id: 'developer-sandbox-489120'
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
-
-      - name: Destroy K8s Apps
-        working-directory: environments/gcp-env-demo/k8s-apps
-        run: |
-          terraform init
-          terraform destroy -auto-approve
-
-# ============================================================================
-# PHASE 3: DESTROY INFRASTRUCTURE & CLEANUP (Runs automatically after Apps)
+# PHASE 2: DESTROY INFRASTRUCTURE & CLEANUP 
 # ============================================================================
   destroy-infra:
-    name: "Step 3: Destroy Infrastructure & Cleanup"
-    needs: destroy-apps
+    name: "Step 2: Destroy Infrastructure & Cleanup"
+    needs: plan-destruction
     runs-on: ubuntu-latest
     # ADDED: Required here as well to maintain authentication
     environment: production
@@ -116,4 +80,3 @@ jobs:
         run: |
           echo "Cleaning up Terraform state files..."
           gsutil rm gs://gcp-demo-gkefeb2026/env/gcp-env-demo/infrastructure/default.tfstate || true
-          gsutil rm gs://gcp-demo-gkefeb2026/env/gcp-env-demo/k8s-apps/default.tfstate || true
