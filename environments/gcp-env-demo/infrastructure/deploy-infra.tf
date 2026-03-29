@@ -17,18 +17,18 @@ module "vpc_network" {
     network_name            = var.network.name
     auto_create_subnetworks = false
 
-    # Subnets (Jumpbox and LBS commented out as they are not currently needed)
-    # subnet_01_name                  = var.network.subnet_jumpbox
-    # subnet_01_cidr                  = var.network.cidr_jumpbox
-    # subnet_01_private_google_access = true
+    # Subnets (Jumpbox and LBS restored to satisfy module strict typing)
+    subnet_01_name                  = var.network.subnet_jumpbox
+    subnet_01_cidr                  = var.network.cidr_jumpbox
+    subnet_01_private_google_access = true
 
     subnet_02_name                  = var.network.subnet_gke
     subnet_02_cidr                  = var.network.cidr_gke
     subnet_02_private_google_access = true
 
-    # subnet_03_name                  = var.network.subnet_services
-    # subnet_03_cidr                  = var.network.cidr_services
-    # subnet_03_private_google_access = true
+    subnet_03_name                  = var.network.subnet_services
+    subnet_03_cidr                  = var.network.cidr_services
+    subnet_03_private_google_access = true
   }
 }
 
