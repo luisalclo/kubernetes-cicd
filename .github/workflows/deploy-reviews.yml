@@ -16,6 +16,9 @@ concurrency:
 jobs:
   call-shared-pipeline:
     uses: ./.github/workflows/shared-k8s-app-pipeline.yml
+    permissions:
+      contents: 'read'
+      id-token: 'write'
     with:
       app_name: 'reviews'
       app_dir: 'src/bookinfo/reviews'
