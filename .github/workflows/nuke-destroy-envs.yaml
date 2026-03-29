@@ -1,4 +1,4 @@
-name: "🧨 NUKE: Plan & Destroy Environments"
+name: "NUKE: Plan & Destroy Environments"
 
 # ============================================================================
 # TRIGGERS: Manual execution only
@@ -20,6 +20,8 @@ jobs:
   plan-destruction:
     name: "🔍 Step 1: Terraform Plan (Dry Run)"
     runs-on: ubuntu-latest
+    # 👇 AÑADIDO: Declarar el entorno para que coincida con la regla de GCP IAM
+    environment: production
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -51,10 +53,11 @@ jobs:
 # PHASE 2: DESTROY APPS (Requires Manual Approval in GitHub Environments)
 # ============================================================================
   destroy-apps:
-    name: "🧨 Step 2: Destroy K8s Apps"
+    name: "Step 2: Destroy K8s Apps"
     needs: plan-destruction
     runs-on: ubuntu-latest
-    environment: nuke-approval 
+    # 👇 MODIFICADO: Cambiado a production para no perder los permisos de GCP
+    environment: production 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -70,7 +73,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
 
-      - name: 🧨 Destroy K8s Apps
+      - name: Destroy K8s Apps
         working-directory: environments/gcp-env-demo/k8s-apps
         run: |
           terraform init
@@ -80,9 +83,11 @@ jobs:
 # PHASE 3: DESTROY INFRASTRUCTURE & CLEANUP (Runs automatically after Apps)
 # ============================================================================
   destroy-infra:
-    name: "🧨 Step 3: Destroy Infrastructure & Cleanup"
+    name: "Step 3: Destroy Infrastructure & Cleanup"
     needs: destroy-apps
     runs-on: ubuntu-latest
+    # 👇 AÑADIDO: Necesario también aquí para mantener la autenticación
+    environment: production
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -98,7 +103,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
 
-      - name: 🧨 Destroy Infrastructure
+      - name: Destroy Infrastructure
         working-directory: environments/gcp-env-demo/infrastructure
         run: |
           terraform init
