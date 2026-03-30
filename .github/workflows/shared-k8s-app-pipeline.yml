@@ -129,13 +129,12 @@ jobs:
           cluster_name: '${{ env.GKE_CLUSTER }}'
           location: '${{ env.GKE_ZONE }}'
 
-      - name: 'Mutate Manifests with Kustomize'
-        working-directory: environments/gcp-env-demo/k8s-manifests
-        run: |
-          # Note: This edits the shared kustomization.yaml.
-          # Since the job runs synchronously for this specific app, it updates its specific image tag.
-          kustomize edit set image ${{ inputs.app_name }}-image=${{ env.REGISTRY }}/${{ inputs.app_name }}:${{ github.sha }}
-
       - name: 'Deploy to K8s'
         working-directory: environments/gcp-env-demo/k8s-manifests
-        run: kubectl apply -k .
+        run: |
+          # 1. Mutate the local kustomization.yaml with the built image
+          kustomize edit set image ${{ inputs.app_name }}-image=${{ env.REGISTRY }}/${{ inputs.app_name }}:${{ github.sha }}
+          
+          # 2. Build the YAMLs, but ONLY apply resources matching the current app's label.
+          # This prevents race conditions where parallel pipelines overwrite each other with dummy images.
+          kustomize build . | kubectl apply -l app=${{ inputs.app_name }} -f -
