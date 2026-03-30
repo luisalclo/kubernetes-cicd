@@ -20,7 +20,7 @@ firewall = {
 
  # 5. GKE Cluster Config
 gke_config = {
-  name              = "demo-standard" # Changed from gke-demo-standard to avoid gke-gke prefix
+  name              = "gke-demo-standard" 
   master_cidr       = "172.16.0.32/28"
   cluster_cidr      = "10.136.0.0/14"
   services_cidr     = "34.118.224.0/20"
