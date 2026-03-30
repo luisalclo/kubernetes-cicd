@@ -56,7 +56,7 @@ gke_config = {
   monitoring_service      = "monitoring.googleapis.com/kubernetes"
 
   # Node Pool
-  std_pool_name     = "pool-standard"
+  std_pool_name     = "gke-pool-standard"
   std_node_count    = 1
   std_machine_type  = "e2-standard-2"
   std_disk_size     = 100
