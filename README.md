@@ -79,6 +79,23 @@ The pipeline is configured to **automatically break (Exit 1)** if the Google Clo
 
 ---
 
+## ⚠️ Important: Handling Manual Changes (Drift)
+
+One of the most critical aspects of this architecture is how it handles the "Observed State" (what is running in GKE) versus the "Desired State" (what is written in Git).
+
+### 1. The Single Source of Truth
+**Git is the only authority.** This project follows the philosophy that no manual changes should be made directly in the Google Cloud Console or via `kubectl edit` in the clúster.
+
+### 2. What happens if I make a manual change?
+*   **No State Lock for Apps:** Unlike Terraform, which would throw a state error if it detected a drift, Kubernetes is highly flexible. If you manually change a replica count or a memory limit in the GCP Console, the clúster will accept it immediately.
+*   **Non-Instant Reconciliation:** Since we are using GitHub Actions (push-based CI/CD) and not an in-clúster agent like ArgoCD, the system **will not** automatically revert your manual change the second you make it.
+*   **Self-Correction on Next Run:** The next time any developer pushes code or any SRE triggers a pipeline, the `kubectl apply -k .` command will compare the clúster's state against Git. **At that moment, Git will overwrite your manual changes**, reverting the clúster to the documented desired state.
+
+### 3. Recommendation
+To maintain consistency and avoid "ghost bugs," always perform configuration changes by modifying the YAML manifests in the `environments/gcp-env-demo/k8s-manifests/` folder and pushing them to the `main` branch.
+
+---
+
 ## 📁 Repository Structure
 
 The codebase is strictly organized to reflect the separation between infrastructure and applications.
