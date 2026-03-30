@@ -1,4 +1,4 @@
-name: 'Deploy: Productpage' #test
+name: 'Deploy: Productpage'
 
 on:
   push:

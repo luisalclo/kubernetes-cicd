@@ -1,4 +1,4 @@
-name: 'Deploy: Ratings' #test
+name: 'Deploy: Ratings'
 
 on:
   push:
