@@ -1,7 +1,7 @@
-############# BEGINNING OF GCP INFRASTRUCTURE - LOGICAL LAYER BELOW ################
+############# BEGINNING OF GCP INFRASTRUCTURE - LOGICAL LAYER BELOW ################ Test
 
 # ============================================================================
-# 1. VPC NETWORK MODULE
+# 1. VPC NETWORK MODULE 
 # ============================================================================
 
 module "vpc_network" {
