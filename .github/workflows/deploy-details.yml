@@ -1,4 +1,4 @@
-name: 'Deploy: Details'
+name: 'Deploy: Details' #test
 
 on:
   push:
