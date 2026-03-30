@@ -1,15 +1,18 @@
-name: "NUKE: Plan & Destroy Environments"
+name: 'NUKE: Plan & Destroy Environments'
 
 # ============================================================================
-# TRIGGERS: Manual execution with explicit confirmation
+# RUN NAME: Dynamic title for the Actions execution list
 # ============================================================================
+run-name: "${{ github.event_name == 'workflow_dispatch' && inputs.run_destroy == true && 'Post Review: Full Infrastructure Destruction' || 'General Review: Destruction Validation Plan' }}"
+
 on:
   workflow_dispatch:
     inputs:
-      confirm_destroy:
-        description: 'Type "DESTROY" to confirm infrastructure deletion'
+      run_destroy:
+        description: 'Run Terraform Destroy? (Check to DELETE all infrastructure)'
         required: true
-        type: string
+        type: boolean
+        default: false
 
 # ============================================================================
 # GLOBAL ENVIRONMENT VARIABLES
@@ -18,76 +21,62 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true' # Removes Node.js 20 deprecation warnings
 
 # ============================================================================
-# PERMISSIONS: Required for OIDC / Workload Identity Federation
+# CONCURRENCY (Auto-cancel previous redundant runs)
 # ============================================================================
-permissions:
-  contents: read
-  id-token: write
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
 
 jobs:
-# ============================================================================
-# PHASE 1: PLAN (Dry Run for Infrastructure)
-# ============================================================================
-  plan-destruction:
-    name: "Step 1: Terraform Plan (Dry Run)"
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+  terraform-destroy:
+    name: "${{ github.event_name == 'workflow_dispatch' && inputs.run_destroy == true && 'Post Review: Apply Destruction' || 'General Review: Validation Plan' }}"
+    runs-on: 'ubuntu-latest'
+    environment: 'production'
 
-      # Direct WIF Authentication (No Service Account)
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v3
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: 'Checkout Repo'
+        uses: 'actions/checkout@v4'
+
+      # 1. Authentication (Direct Workload Identity Pool authentication)
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v3'
         with:
           create_credentials_file: true
           workload_identity_provider: 'projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/providers/github'
           project_id: 'developer-sandbox-489120'
 
-      - name: Setup Terraform
+      # 2. Setup Terraform
+      - name: 'Setup Terraform'
         uses: hashicorp/setup-terraform@v4
 
-      - name: Plan Destroy Infrastructure
+      # 3. Initialize Terraform
+      - name: 'Terraform Init'
         working-directory: environments/gcp-env-demo/infrastructure
-        run: |
-          terraform init
-          terraform plan -destroy
+        run: terraform init
 
-# ============================================================================
-# PHASE 2: DESTROY INFRASTRUCTURE & CLEANUP 
-# ============================================================================
-  destroy-infra:
-    name: "Step 2: Destroy Infrastructure & Cleanup"
-    needs: plan-destruction
-    # This condition ensures the destruction ONLY runs if the exact word is typed
-    if: ${{ inputs.confirm_destroy == 'DESTROY' }}
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      # Direct WIF Authentication
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v3
-        with:
-          create_credentials_file: true
-          workload_identity_provider: 'projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/providers/github'
-          project_id: 'developer-sandbox-489120'
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
-
-      - name: Destroy Infrastructure
+      # 4. Generate Destruction Plan (Always runs to show what will be deleted)
+      - name: 'Terraform Plan (Destroy)'
         working-directory: environments/gcp-env-demo/infrastructure
-        run: |
-          terraform init
-          terraform destroy -auto-approve
+        run: terraform plan -destroy
 
-      - name: Set up Cloud SDK
+      # 5. Execute Destruction (Only triggers if the checkbox was marked)
+      - name: 'Terraform Destroy'
+        if: "${{ github.event_name == 'workflow_dispatch' && inputs.run_destroy == true }}"
+        working-directory: environments/gcp-env-demo/infrastructure
+        run: terraform destroy -auto-approve
+
+      # 6. Clean up state files in GCS
+      - name: 'Set up Cloud SDK'
+        if: "${{ github.event_name == 'workflow_dispatch' && inputs.run_destroy == true }}"
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Delete State Files from GCS
+      - name: 'Delete State Files from GCS'
+        if: "${{ github.event_name == 'workflow_dispatch' && inputs.run_destroy == true }}"
         run: |
           echo "Cleaning up Terraform state files..."
           gsutil rm gs://gcp-demo-gkefeb2026/terraform/env/gcp-env-demo/infra/default.tfstate || true
