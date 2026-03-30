@@ -12,6 +12,55 @@ A comprehensive automated solution for **GCP Infrastructure provisioning (via Te
 ---
 
 ## 🏗️ Architecture Overview: A Hybrid Approach
+```mermaid
+flowchart TD
+    subgraph SC [Source Control GitHub / CSR]
+        AppRepo[App Repo: Code + Manifests]
+        InfraRepo[Infra Repo: Terraform]
+    end
+
+    subgraph CB_App [GCP Cloud Build: App CI/CD]
+        BuildImg[Build Docker Image]
+        SecScan[Security Scan]
+        PushAR[Push to Artifact Registry]
+        UpdateK8s[Update K8s Manifests / Helm Charts]
+        DeployGKE[Deploy to GKE via kubectl/helm]
+    end
+
+    subgraph CB_Infra [GCP Cloud Build: Infra]
+        TFInit[Terraform Init/Plan]
+        Approval{Approval Gate}
+        TFApply[Terraform Apply]
+        VPC[VPC & Networking]
+        GKE[GKE Cluster]
+        IAM[IAM & Service Accounts]
+    end
+
+    subgraph GCP [Google Cloud Platform]
+        AR[(Artifact Registry)]
+        GKE_Inst[GKE Cluster Instance]
+    end
+
+    %% Application Pipeline Flow
+    AppRepo --> BuildImg
+    BuildImg --> SecScan
+    SecScan --> PushAR
+    PushAR --> UpdateK8s
+    UpdateK8s --> DeployGKE
+
+    %% Infrastructure Pipeline Flow (Terraform)
+    InfraRepo --> TFInit
+    TFInit --> Approval
+    Approval --> TFApply
+    TFApply --> VPC
+    TFApply --> GKE
+    TFApply --> IAM
+
+    %% Cross-Connections and Deployments
+    PushAR -.-> AR
+    AR -.-> DeployGKE
+    DeployGKE -.-> GKE_Inst
+    GKE -.-> GKE_Inst
 
 This project demonstrates a sophisticated, real-world cloud-native architecture that separates concerns between two distinct, loosely-coupled lifecycles: **Infrastructure** and **Application**.
 
