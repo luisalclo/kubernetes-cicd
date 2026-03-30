@@ -123,7 +123,13 @@ resource "google_container_node_pool" "standard_nodes" {
     tags                  = var.node_tags
     # ----------------------------------------
   }
- }
+
+  lifecycle {
+    ignore_changes = [
+      node_config[0].resource_manager_tags
+    ]
+  }
+}
 
 
 # # 4. Resource: Separate Node Pool (SPOT/Preemptible Nodes)
