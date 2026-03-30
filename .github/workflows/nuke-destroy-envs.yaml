@@ -39,7 +39,7 @@ jobs:
 
     steps:
       - name: 'Checkout Repo'
-        uses: 'actions/checkout@v4'
+        uses: 'actions/checkout@v6'
 
       # 1. Authentication (Direct Workload Identity Pool authentication)
       - id: 'auth'
@@ -73,7 +73,7 @@ jobs:
       # 6. Clean up state files in GCS
       - name: 'Set up Cloud SDK'
         if: "${{ github.event_name == 'workflow_dispatch' && inputs.run_destroy == true }}"
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
 
       - name: 'Delete State Files from GCS'
         if: "${{ github.event_name == 'workflow_dispatch' && inputs.run_destroy == true }}"
