@@ -51,6 +51,8 @@ jobs:
       # 2. Setup Google Cloud SDK and Docker Auth
       - name: 'Set up Cloud SDK'
         uses: 'google-github-actions/setup-gcloud@v2'
+        with:
+          install_components: 'local-extract'
 
       - name: 'Docker Auth to GAR'
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
