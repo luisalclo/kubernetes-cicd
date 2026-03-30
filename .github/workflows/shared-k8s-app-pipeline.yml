@@ -98,18 +98,25 @@ jobs:
       - name: 'Scan ${{ inputs.app_name }} Image'
         run: |
           echo "Scanning ${{ inputs.app_name }} image..."
+          
           # The scan command returns an operation/scan name
-          SCAN_NAME=$(gcloud artifacts docker images scan ${{ env.REGISTRY }}/${{ inputs.app_name }}:${{ github.sha }} --format="value(response.scan)")
+          SCAN_NAME=$(gcloud artifacts docker images scan ${{ env.REGISTRY }}/${{ inputs.app_name }}:${{ github.sha }} \
+            --location=${{ env.REGION }} \
+            --format="value(response.scan)" \
+            --quiet)
           
           echo "Checking for CRITICAL vulnerabilities in scan: $SCAN_NAME"
-          # list-vulnerabilities expects the scan name as an argument
-          CRITICALS=$(gcloud artifacts docker images list-vulnerabilities "$SCAN_NAME" --filter="vulnerability.effectiveSeverity=CRITICAL" --format="value(vulnerability.effectiveSeverity)")
           
-          if [ -n "$CRITICALS" ]; then
-            echo "🚨 CRITICAL vulnerabilities found! Failing pipeline."
+          # Extract all severities and count CRITICAL occurrences using grep
+          CRITICAL_COUNT=$(gcloud artifacts docker images list-vulnerabilities "$SCAN_NAME" \
+            --format="value(vulnerability.effectiveSeverity)" | grep -c "CRITICAL" || true)
+          
+          # Evaluate the result
+          if [ "$CRITICAL_COUNT" -gt 0 ]; then
+            echo "SECURITY FAILURE: Found $CRITICAL_COUNT CRITICAL vulnerabilities. Failing pipeline."
             exit 1
           else
-            echo "✅ No CRITICAL vulnerabilities found. Proceeding."
+            echo "Clean scan: 0 CRITICAL vulnerabilities found. Proceeding."
           fi
 
       # ============================================================================
