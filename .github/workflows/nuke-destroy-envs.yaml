@@ -1,10 +1,21 @@
 name: "NUKE: Plan & Destroy Environments"
 
 # ============================================================================
-# TRIGGERS: Manual execution only
+# TRIGGERS: Manual execution with explicit confirmation
 # ============================================================================
 on:
   workflow_dispatch:
+    inputs:
+      confirm_destroy:
+        description: 'Type "DESTROY" to confirm infrastructure deletion'
+        required: true
+        type: string
+
+# ============================================================================
+# GLOBAL ENVIRONMENT VARIABLES
+# ============================================================================
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true' # Removes Node.js 20 deprecation warnings
 
 # ============================================================================
 # PERMISSIONS: Required for OIDC / Workload Identity Federation
@@ -18,9 +29,8 @@ jobs:
 # PHASE 1: PLAN (Dry Run for Infrastructure)
 # ============================================================================
   plan-destruction:
-    name: "🔍 Step 1: Terraform Plan (Dry Run)"
+    name: "Step 1: Terraform Plan (Dry Run)"
     runs-on: ubuntu-latest
-    # ADDED: Declare the environment to match the GCP IAM rule
     environment: production
     steps:
       - name: Checkout Code
@@ -37,7 +47,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
 
-      - name: 🔍 Plan Destroy Infrastructure
+      - name: Plan Destroy Infrastructure
         working-directory: environments/gcp-env-demo/infrastructure
         run: |
           terraform init
@@ -49,8 +59,9 @@ jobs:
   destroy-infra:
     name: "Step 2: Destroy Infrastructure & Cleanup"
     needs: plan-destruction
+    # This condition ensures the destruction ONLY runs if the exact word is typed
+    if: ${{ inputs.confirm_destroy == 'DESTROY' }}
     runs-on: ubuntu-latest
-    # ADDED: Required here as well to maintain authentication
     environment: production
     steps:
       - name: Checkout Code
@@ -79,4 +90,4 @@ jobs:
       - name: Delete State Files from GCS
         run: |
           echo "Cleaning up Terraform state files..."
-          gsutil rm gs://gcp-demo-gkefeb2026/env/gcp-env-demo/infrastructure/default.tfstate || true
+          gsutil rm gs://gcp-demo-gkefeb2026/terraform/env/gcp-env-demo/infra/default.tfstate || true

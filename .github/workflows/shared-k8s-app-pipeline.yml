@@ -16,11 +16,16 @@ on:
 # GLOBAL ENVIRONMENT VARIABLES
 # ============================================================================
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true' # Removes Node.js 20 deprecation warnings
   PROJECT_ID: 'developer-sandbox-489120'
   REGION: 'us-central1'
   GKE_ZONE: 'us-central1'
   WIF_PROVIDER: 'projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/providers/github'
   # GKE_CLUSTER and REGISTRY are now dynamically fetched from Terraform state
+  # Declare empty variables to satisfy the IDE linter. 
+  # These will be dynamically overwritten by the Terraform step later.
+  GKE_CLUSTER: ''
+  REGISTRY: ''
 
 # ============================================================================
 # JOBS DEFINITION
@@ -132,9 +137,12 @@ jobs:
       - name: 'Deploy to K8s'
         working-directory: environments/gcp-env-demo/k8s-manifests
         run: |
+          # Ensure the Namespace exists first
+          kubectl apply -f 00-namespace.yaml
+
           # 1. Mutate the local kustomization.yaml with the built image
           kustomize edit set image ${{ inputs.app_name }}-image=${{ env.REGISTRY }}/${{ inputs.app_name }}:${{ github.sha }}
-          
+
           # 2. Build the YAMLs, but ONLY apply resources matching the current app's label.
           # This prevents race conditions where parallel pipelines overwrite each other with dummy images.
           kustomize build . | kubectl apply -l app=${{ inputs.app_name }} -f -
