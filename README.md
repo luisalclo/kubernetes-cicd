@@ -190,9 +190,9 @@ This ensures that updating application source code doesn't trigger a Terraform p
 
 ### 2. Application Pipelines (Two-Tiered)
 
-#### Tier 1: Caller Workflows (`deploy-productpage.yml`, etc.)
+#### Tier 1: Caller Workflows (`deploy-productpage.yml`, `deploy-details.yml`, `deploy-reviews.yml`, `deploy-ratings.yml`)
 *   **Purpose:** To act as a simple trigger. It watches specific file paths and, when a change is detected, calls the shared pipeline with the correct parameters for that microservice.
-*   **Trigger:** Changes to an application's source code (`src/bookinfo/productpage/**`) or its specific Kubernetes manifest.
+*   **Trigger:** Changes to an application's source code (`src/bookinfo/productpage/**`, `src/bookinfo/details/**`, etc.) or its specific Kubernetes manifest.
 *   **Logic:** Contains a `uses: ./.github/workflows/shared-k8s-app-pipeline.yml` block, passing `app_name` and `app_dir` as inputs.
 
 #### Tier 2: Shared Workflow (`shared-k8s-app-pipeline.yml`)
