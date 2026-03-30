@@ -85,28 +85,87 @@ The codebase is organized into modular components to separate the two main lifec
 ```text
 .
 ├── .github/workflows/
-│   ├── deploy-infra.yaml               # IaC: Provisions VPC, Subnets, and GKE Cluster
-│   ├── deploy-productpage.yml          # CI/CD: Caller for the 'productpage' microservice
-│   ├── deploy-reviews.yml              # CI/CD: Caller for the 'reviews' microservice
-│   ├── ... (and other app callers) ...
-│   └── shared-k8s-app-pipeline.yml     # CI/CD: Reusable workflow for build, scan, deploy
+│   ├── deploy-details.yml
+│   ├── deploy-infra.yaml
+│   ├── deploy-productpage.yml
+│   ├── deploy-ratings.yml
+│   ├── deploy-reviews.yml
+│   ├── nuke-destroy-envs.yaml
+│   └── shared-k8s-app-pipeline.yml
 ├── environments/gcp-env-demo/
-│   ├── infrastructure/                 # Layer 1: Base Cloud Infrastructure (Terraform)
-│   │   ├── deploy-infra.tf             # Main orchestration logic (VPC + GKE)
-│   │   └── ... (other terraform files)
-│   └── k8s-manifests/                  # Layer 2: Kubernetes Manifests (Kustomize)
-│       ├── kustomization.yaml          # Kustomize entrypoint
-│       ├── 00-namespace.yaml           # Namespace definition
-│       └── 01-productpage.yaml         # K8s Deployment & Service manifests
-└── modules/                            # Reusable Terraform Modules for Infrastructure
-│   ├── vpc/
+│   ├── infrastructure/
+│   │   ├── backend-infra.tf
+│   │   ├── deploy-infra.tf
+│   │   ├── gen-infra-outputs.tf
+│   │   ├── infra.auto.tfvars
+│   │   ├── providers-infra.tf
+│   │   └── variables-infra.tf
+│   └── k8s-manifests/
+│       ├── 00-namespace.yaml
+│       ├── 01-productpage.yaml
+│       ├── 02-details.yaml
+│       ├── 03-reviews.yaml
+│       ├── 04-ratings.yaml
+│       └── kustomization.yaml
+├── modules/
+│   ├── compute-engine/
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
 │   ├── gke/
-│   └── compute-engine/
-└── src/bookinfo/                       # Layer 2: Application Source Code
-    ├── productpage/                    # Source for the 'productpage' service
-    │   └── productpage.py
-    └── reviews/                        # Source for the 'reviews' service
-        └── ...
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   └── vpc/
+│       ├── main.tf
+│       ├── outputs.tf
+│       └── variables.tf
+└── src/bookinfo/
+    ├── details/
+    │   ├── details.rb
+    │   └── Gemfile.lock
+    ├── productpage/
+    │   ├── productpage.py
+    │   ├── requirements.in
+    │   ├── requirements.txt
+    │   ├── static/img/izzy.png
+    │   ├── static/tailwind/tailwind.css
+    │   ├── templates/index.html
+    │   ├── templates/productpage.html
+    │   ├── test-requirements.in
+    │   ├── test-requirements.txt
+    │   └── tests/unit/test_productpage.py
+    ├── ratings/
+    │   ├── package.json
+    │   └── ratings.js
+    └── reviews/
+        ├── .gitignore
+        ├── build.gradle
+        ├── reviews-application/
+        │   ├── build.gradle
+        │   └── src/
+        │       ├── main/
+        │       │   ├── java/application/
+        │       │   │   ├── ReviewsApplication.java
+        │       │   │   └── rest/LibertyRestEndpoint.java
+        │       │   └── webapp/
+        │       │       ├── index.html
+        │       │       └── WEB-INF/
+        │       │           ├── ibm-web-ext.xml
+        │       │           └── web.xml
+        │       └── test/
+        │           └── java/test/TestApplication.java
+        ├── reviews-wlpcfg/
+        │   ├── build.gradle
+        │   ├── servers/LibertyProjectServer/server.xml
+        │   ├── shared/.gitkeep
+        │   └── src/
+        │       └── test/
+        │           └── java/it/
+        │               ├── EndpointTest.java
+        │               ├── LibertyRestEndpointTest.java
+        │               └── TestApplication.java
+        └── settings.gradle
 ```
 
 ---
