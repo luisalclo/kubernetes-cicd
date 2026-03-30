@@ -16,11 +16,13 @@ A comprehensive automated solution for **GCP Infrastructure provisioning (via Te
 This project demonstrates a sophisticated, real-world cloud-native architecture that separates concerns between two distinct, loosely-coupled lifecycles: **Infrastructure** and **Application**.
 
 ### Layer 1: The Infrastructure Platform (IaC with Terraform)
-This layer is the stable, long-lived foundation of the entire environment. It is managed exclusively with Infrastructure as Code (IaC) using Terraform, ensuring it is versioned, repeatable, and auditable. This layer rarely changes.
+This layer is the stable, long-lived foundation of the entire environment. It is managed exclusively with Infrastructure as Code (IaC) using Terraform, ensuring it is versioned, repeatable, and auditable. This layer rarely changes. The primary logic is in `deploy-infra.tf`, which uses the following reusable modules:
 
 *   **Components:**
     *   **GCP Networking (`vpc` module):** Establishes a custom Virtual Private Cloud (VPC) with granular subnets for different traffic types (GKE Nodes, Pods, and Services). This provides network-level isolation, a core tenant of secure multi-tenant clusters.
     *   **GKE Compute (`gke` module):** Provisions a **private** Google Kubernetes Engine (GKE) Standard Cluster. "Private" is a critical security distinction, meaning nodes do not have public IP addresses and are shielded from the public internet. Access to the Kubernetes API master is locked down via `master_authorized_networks`, ensuring only authorized entities can communicate with it.
+    *   **Artifact Registry (`artifact-registry` module):** Deploys a dedicated Artifact Registry repository. This secure, private registry is used to store and manage the Docker container images built by the CI/CD pipeline before they are deployed to GKE.
+    *   **Bastion Host (`compute-engine` module):** The repository includes a module for provisioning a bastion host (or "jumpbox") VM. While this is a common pattern for accessing private GKE clusters, in this architecture **it is not used**. We are favoring direct connection via the browser-based **GCP Cloud Shell**, which has built-in utilities and doesn't require managing a separate VM. The module remains for reference or future use cases.
     *   **Security & Identity (Workload Identity Federation):** This is the cornerstone of our keyless security posture. Instead of using static, long-lived Service Account keys (a major security risk), we configure GCP to trust GitHub Actions as a federated identity provider. This allows the CI/CD pipeline to dynamically obtain short-lived, ephemeral GCP access tokens, drastically reducing the risk of credential leakage.
 
 ### Layer 2: The Application Lifecycle (CI/CD)
