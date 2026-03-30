@@ -1,7 +1,7 @@
 # 🚀 GCP Infrastructure (IaC) & GKE Application (CI/CD) Pipeline
 
 ![Terraform](https://img.shields.io/badge/terraform-%235835CC.svg?style=for-the-badge&logo=terraform&logoColor=white)
-![Google Cloud](httpss://img.shields.io/badge/GoogleCloud-%234285F4.svg?style=for-the-badge&logo=google-cloud&logoColor=white)
+![Google Cloud](https://img.shields.io/badge/GoogleCloud-%234285F4.svg?style=for-the-badge&logo=google-cloud&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/github%20actions-%232671E5.svg?style=for-the-badge&logo=githubactions&logoColor=white)
 ![Kubernetes](https://img.shields.io/badge/kubernetes-%23326ce5.svg?style=for-the-badge&logo=kubernetes&logoColor=white)
 ![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
@@ -13,21 +13,23 @@ A comprehensive automated solution for **GCP Infrastructure provisioning (via Te
 
 ## 🏗️ Architecture Overview: A Hybrid Approach
 
-This project demonstrates a sophisticated, real-world cloud-native architecture that separates concerns between two distinct lifecycles: Infrastructure and Application.
+This project demonstrates a sophisticated, real-world cloud-native architecture that separates concerns between two distinct, loosely-coupled lifecycles: **Infrastructure** and **Application**.
 
-*   **Layer 1: Infrastructure as Code (IaC) with Terraform**
-    *   **The Foundation:** Terraform is used exclusively to provision and manage the core, stable infrastructure within the GCP project `developer-sandbox-489120`. This layer rarely changes.
-    *   **Components:**
-        *   **GCP Networking:** Custom VPC with isolated subnets for GKE Nodes, Services, and Management.
-        *   **GKE Compute:** A Google Kubernetes Engine (GKE) **Standard** Cluster with private nodes and master authorized networks.
-        *   **Security & Identity:** Keyless Authentication using Workload Identity Federation (WIF) and direct principal bindings.
+### Layer 1: The Infrastructure Platform (IaC with Terraform)
+This layer is the stable, long-lived foundation of the entire environment. It is managed exclusively with Infrastructure as Code (IaC) using Terraform, ensuring it is versioned, repeatable, and auditable. This layer rarely changes.
 
-*   **Layer 2: Application CI/CD with Docker, Kustomize & GitHub Actions**
-    *   **The Dynamic Layer:** Applications are NOT deployed with Terraform. Instead, a robust CI/CD pipeline builds container images directly from source code, scans them, and deploys them to the GKE cluster. This layer changes frequently.
-    *   **Components:**
-        *   **Source Code:** The `src/bookinfo` directory contains the application source for the **Bookinfo** microservices suite.
-        *   **CI/CD Pipeline:** A reusable GitHub Actions workflow (`shared-k8s-app-pipeline.yml`) automates the entire process of building, scanning, and deploying.
-        *   **Kubernetes Manifests:** The `environments/gcp-env-demo/k8s-manifests/` directory contains plain Kubernetes YAML manifests, managed and customized by **Kustomize**.
+*   **Components:**
+    *   **GCP Networking (`vpc` module):** Establishes a custom Virtual Private Cloud (VPC) with granular subnets for different traffic types (GKE Nodes, Pods, and Services). This provides network-level isolation, a core tenant of secure multi-tenant clusters.
+    *   **GKE Compute (`gke` module):** Provisions a **private** Google Kubernetes Engine (GKE) Standard Cluster. "Private" is a critical security distinction, meaning nodes do not have public IP addresses and are shielded from the public internet. Access to the Kubernetes API master is locked down via `master_authorized_networks`, ensuring only authorized entities can communicate with it.
+    *   **Security & Identity (Workload Identity Federation):** This is the cornerstone of our keyless security posture. Instead of using static, long-lived Service Account keys (a major security risk), we configure GCP to trust GitHub Actions as a federated identity provider. This allows the CI/CD pipeline to dynamically obtain short-lived, ephemeral GCP access tokens, drastically reducing the risk of credential leakage.
+
+### Layer 2: The Application Lifecycle (CI/CD)
+This layer is dynamic and fast-moving, representing the actual business logic. Applications are NOT deployed with Terraform. Instead, a robust CI/CD pipeline automates the entire process of transforming source code into a running, secured workload in the GKE cluster.
+
+*   **Components:**
+    *   **Source Code (`src/bookinfo`):** The single source of truth for all application code. Developers push changes here to trigger the entire delivery process.
+    *   **CI/CD Pipeline (`shared-k8s-app-pipeline.yml`):** The engine of the application layer. This reusable GitHub Actions workflow is responsible for orchestrating the key stages of delivery for any microservice: building a Docker image, pushing it to a registry, performing security scanning, and deploying to GKE.
+    *   **Kubernetes Manifests (`k8s-manifests/` & Kustomize):** This directory contains the declarative, plain Kubernetes YAML files that define *how* the applications should run (Deployments, Services, etc.). We use **Kustomize** as a template-free way to manage these manifests. Its primary role in this pipeline is to dynamically update the image tag in the base manifests to point to the newly-built Docker image from the CI/CD run, ensuring the correct version is deployed.
 
 ---
 
@@ -83,57 +85,28 @@ The codebase is organized into modular components to separate the two main lifec
 ```text
 .
 ├── .github/workflows/
-│   ├── deploy-details.yml
-│   ├── deploy-infra.yaml
-│   ├── deploy-productpage.yml
-│   ├── deploy-ratings.yml
-│   ├── deploy-reviews.yml
-│   ├── nuke-destroy-envs.yaml
-│   └── shared-k8s-app-pipeline.yml
+│   ├── deploy-infra.yaml               # IaC: Provisions VPC, Subnets, and GKE Cluster
+│   ├── deploy-productpage.yml          # CI/CD: Caller for the 'productpage' microservice
+│   ├── deploy-reviews.yml              # CI/CD: Caller for the 'reviews' microservice
+│   ├── ... (and other app callers) ...
+│   └── shared-k8s-app-pipeline.yml     # CI/CD: Reusable workflow for build, scan, deploy
 ├── environments/gcp-env-demo/
-│   ├── infrastructure/
-│   │   ├── backend-infra.tf
-│   │   ├── deploy-infra.tf
-│   │   ├── gen-infra-outputs.tf
-│   │   ├── infra.auto.tfvars
-│   │   ├── providers-infra.tf
-│   │   └── variables-infra.tf
-│   └── k8s-manifests/
-│       ├── 00-namespace.yaml
-│       ├── 01-productpage.yaml
-│       ├── 02-details.yaml
-│       ├── 03-reviews.yaml
-│       ├── 04-ratings.yaml
-│       └── kustomization.yaml
-├── modules/
-│   ├── compute-engine/
-│   │   ├── main.tf
-│   │   ├── outputs.tf
-│   │   └── variables.tf
+│   ├── infrastructure/                 # Layer 1: Base Cloud Infrastructure (Terraform)
+│   │   ├── deploy-infra.tf             # Main orchestration logic (VPC + GKE)
+│   │   └── ... (other terraform files)
+│   └── k8s-manifests/                  # Layer 2: Kubernetes Manifests (Kustomize)
+│       ├── kustomization.yaml          # Kustomize entrypoint
+│       ├── 00-namespace.yaml           # Namespace definition
+│       └── 01-productpage.yaml         # K8s Deployment & Service manifests
+└── modules/                            # Reusable Terraform Modules for Infrastructure
+│   ├── vpc/
 │   ├── gke/
-│   │   ├── main.tf
-│   │   ├── outputs.tf
-│   │   └── variables.tf
-│   └── vpc/
-│       ├── main.tf
-│       ├── outputs.tf
-│       └── variables.tf
-└── src/bookinfo/
-    ├── details/
-    │   ├── details.rb
-    │   └── Gemfile.lock
-    ├── productpage/
-    │   ├── productpage.py
-    │   ├── requirements.txt
-    │   └── templates/productpage.html
-    ├── ratings/
-    │   ├── package.json
-    │   └── ratings.js
-    └── reviews/
-        ├── build.gradle
-        ├── settings.gradle
-        ├── reviews-application/ (Java source)
-        └── reviews-wlpcfg/ (Java source)
+│   └── compute-engine/
+└── src/bookinfo/                       # Layer 2: Application Source Code
+    ├── productpage/                    # Source for the 'productpage' service
+    │   └── productpage.py
+    └── reviews/                        # Source for the 'reviews' service
+        └── ...
 ```
 
 ---
