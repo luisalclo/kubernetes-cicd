@@ -101,7 +101,7 @@ jobs:
           
           # The scan command returns an operation/scan name
           SCAN_NAME=$(gcloud artifacts docker images scan ${{ env.REGISTRY }}/${{ inputs.app_name }}:${{ github.sha }} \
-            --location=${{ env.REGION }} \
+            --location=us \
             --format="value(response.scan)" \
             --quiet)
           

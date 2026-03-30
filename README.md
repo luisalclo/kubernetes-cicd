@@ -1,250 +1,173 @@
-# 🚀 GCP Cloud Infrastructure & GKE Deployment Pipeline
+# 🚀 GCP Cloud Infrastructure & DevSecOps GKE Pipeline
 
 ![Terraform](https://img.shields.io/badge/terraform-%235835CC.svg?style=for-the-badge&logo=terraform&logoColor=white)
 ![Google Cloud](https://img.shields.io/badge/GoogleCloud-%234285F4.svg?style=for-the-badge&logo=google-cloud&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/github%20actions-%232671E5.svg?style=for-the-badge&logo=githubactions&logoColor=white)
 ![Kubernetes](https://img.shields.io/badge/kubernetes-%23326ce5.svg?style=for-the-badge&logo=kubernetes&logoColor=white)
+![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
+![Security](https://img.shields.io/badge/security-GCP_Container_Analysis-blue?style=for-the-badge)
 
-A comprehensive automated solution for **GCP Infrastructure provisioning** and **GKE Workload delivery**. This project serves as a **production-ready blueprint** for organizations looking to validate GCP's potential or migrate legacy workloads (On-prem/Multi-cloud) into a modernized GKE environment.
+A comprehensive automated solution for **GCP Infrastructure provisioning** and **Cloud-Native GKE Workload delivery**. This project serves as a **production-ready blueprint** for organizations looking to modernize multi-service workloads using a secure, end-to-end DevSecOps pipeline on Google Cloud Platform.
 
 ---
 
 ## 🏗️ Architecture Overview
 
-The system is designed to manage the full lifecycle of a GKE-based environment within the GCP project `developer-sandbox-489120`.
+The system is designed to manage the full lifecycle of a modernized microservices environment within the GCP project `developer-sandbox-489120`. It leverages a layered approach where foundational resources and application delivery are decoupled for maximum agility and security.
 
-*   **GCP Networking:** Custom VPC with isolated subnets for GKE Nodes, Services, and Management (Jumpbox).
-*   **GKE Compute:** A Google Kubernetes Engine (GKE) **Standard** Cluster with private nodes and master authorized networks.
-*   **Security & Identity:** **Keyless Authentication** using Workload Identity Federation (WIF) and direct principal bindings.
-*   **GKE Workloads:** Automated deployment of the **Bookinfo** microservices suite via the Terraform `kubernetes` provider.
+### 1. Foundational Infrastructure (Terraform)
+The base layer is managed declaratively using Terraform, ensuring that the cloud environment is immutable and reproducible.
+*   **Custom VPC Networking:** A dedicated Virtual Private Cloud with a single optimized subnetwork for GKE, eliminating unnecessary overhead while maintaining strict isolation.
+*   **GKE Standard Cluster:** A robust Google Kubernetes Engine cluster configured with private nodes and master authorized networks to ensure the control plane is not exposed to the public internet.
+*   **Artifact Registry:** A centralized Docker repository that serves as the single source of truth for all validated container images.
+*   **Identity Management:** Uses Workload Identity Federation (WIF) to enable keyless, OIDC-based authentication between GitHub Actions and Google Cloud.
 
-### 🧩 Why Bookinfo? (Simple but Powerful)
-For this demo, we selected the **Bookinfo** application because it provides a realistic view of a **Polyglot Microservices Architecture**:
-*   **Diverse Runtimes:** It includes four services written in different languages (**Python, Java, Ruby, and Node.js**), proving GKE's versatility for any runtime.
-*   **Chain of Communication:** It features a complex flow (`Productpage` -> `Details` & `Reviews` -> `Ratings`), perfect for demonstrating internal DNS and Service discovery.
-*   **Versioning Support:** With three versions of the `Reviews` service (v1, v2, v3), we can showcase GKE's power to handle multiple versions and traffic distribution directly via Terraform.
-
----
-
-## 🌟 GKE: The Strategic Landing Zone for Modernization
-
-This repository is specifically designed to demonstrate the power of **Google Kubernetes Engine (GKE)** as the ultimate target for cloud migration and modernization strategies.
-
-### 🛡️ From Legacy to Zero-Trust
-Organizations migrating from On-prem or other clouds often struggle with secret management. This blueprint eliminates long-lived Service Account keys by using **Workload Identity Federation**, providing a secure, keyless integration between GitHub and GCP that is impossible to replicate in legacy environments.
-
-### ⚙️ Managed Excellence vs. Operational Overhead
-By moving to GKE, teams shift from managing complex Kubernetes control planes and infrastructure to consuming a high-availability managed service. This project showcases how GCP handles:
-*   **Auto-repair & Auto-upgrade:** Keeping the fleet healthy without manual intervention.
-*   **VPC-Native Networking:** Seamless integration with GCP's global network for low-latency communication.
-
-### 🚀 High-Velocity Developer Experience
-The deep integration with **GitHub Actions** ensures that developers can move workloads to GCP without learning new proprietary tools. If it runs in a container, it runs on GKE with the same CI/CD patterns they already know, but with the added scalability and reliability of Google Cloud.
+### 2. Cloud-Native Application Delivery (YAML & Kustomize)
+Departing from legacy Terraform-managed Kubernetes resources, this project uses a native approach for workload orchestration.
+*   **Native YAML Manifests:** Standard Kubernetes Resource definitions (Deployments, Services, Namespaces) that are familiar to developers and portable across environments.
+*   **Kustomize Orchestration:** Uses Kustomize to manage environment-specific configurations and perform dynamic image injection without modifying the base source code.
+*   **DevSecOps Pipeline:** A modular CI/CD system that builds images from source, performs automated security scans, and deploys validated artifacts.
 
 ---
 
-## 🔐 Authentication Flow (Workload Identity Federation)
+## 🧩 The Workload: Bookinfo Suite
 
-To achieve zero-trust and eliminate the need for long-lived Service Account JSON keys, this project uses OIDC-based authentication.
+We utilize the **Bookinfo** application to demonstrate a realistic **Polyglot Microservices Architecture**. This choice highlights the system's ability to handle diverse runtimes and complex communication patterns.
+
+*   **Productpage:** The frontend microservice written in **Python**. It calls the details and reviews services to populate the page.
+*   **Details:** A backend service written in **Ruby**, providing book information.
+*   **Reviews:** A **Java** service that provides book reviews and ratings. It has three versions (v1, v2, v3) to demonstrate traffic distribution and versioning.
+*   **Ratings:** A **Node.js** service that provides ranking information for book reviews.
+
+---
+
+## 🌟 Modernization Strategy: Separation of Concerns
+
+This repository showcases the strategic advantage of separating **Infrastructure provisioning** from **Application delivery**.
+
+### Why separate them?
+1.  **Developer Velocity:** Application teams can update their services and Kubernetes manifests independently without waiting for infrastructure pipelines to run or risking the corruption of the Terraform state.
+2.  **Infrastructure Stability:** Foundations like networking and the GKE cluster change infrequently but carry high risk. By isolating them in their own lifecycle, we ensure that an app-level error cannot accidentally destroy a database or a network route.
+3.  **Idiomatic Tooling:** Developers use standard tools like `kubectl` and `kustomize`, while SREs use `terraform`. Each team uses the best tool for their specific job.
+
+---
+
+## 🔐 Security & DevSecOps Flow
+
+Security is not an afterthought; it is baked into the pipeline. We implement a "Shift-Left" security model using **GCP Container Analysis**.
 
 ```mermaid
 sequenceDiagram
-    participant GitHub as GitHub Actions
-    participant OIDC as GCP Identity Pool
-    participant IAM as GCP IAM (Principal)
-    participant TF as Terraform
-    participant GKE as Google Kubernetes Engine
+    participant GH as GitHub Actions
+    participant GAR as Artifact Registry
+    participant SCA as Container Analysis (GCP)
+    participant GKE as Kubernetes Engine
 
-    GitHub->>OIDC: 1. Request Auth (OIDC Token)
-    OIDC-->>GitHub: 2. Validate Token (Repo & Environment check)
-    GitHub->>IAM: 3. Assume Direct Principal Role
-    IAM-->>TF: 4. Grant Editor / Admin Permissions
-    TF->>GKE: 5. Execute Plan / Apply (Infra & K8s Apps)
+    GH->>GH: 1. Build Docker Image (Tag: GitHub SHA)
+    GH->>GAR: 2. Push Image to Private Repo
+    GH->>SCA: 3. Trigger On-Demand Scan
+    SCA-->>GH: 4. Return Vulnerability Report
+    alt CRITICAL Vulnerabilities Found
+        GH--xGH: 5. FAIL Pipeline & Stop Deployment
+    else Secure Image
+        GH->>GKE: 6. Kustomize tag injection & kubectl apply
+    end
 ```
+
+### Automated Protection
+The pipeline is configured to **automatically break (Exit 1)** if the Google Cloud scanner detects any vulnerability with an effective severity of `CRITICAL`. This prevents insecure code from ever reaching the production clúster.
 
 ---
 
 ## 📁 Repository Structure
 
-The codebase is organized into modular components to separate infrastructure lifecycle from application delivery.
+The codebase is strictly organized to reflect the separation between infrastructure and applications.
 
 ```text
 .
 ├── .github/workflows/
-│   ├── deploy-infra.yaml        # Provisions VPC, Subnets, and GKE Cluster
-│   ├── deploy-apps.yml          # Deploys K8s workloads via Terraform provider
-│   └── build-deploy.yml         # Shared or legacy CI/CD logic
+│   ├── deploy-infra.yaml           # Provisions VPC, GKE, and Artifact Registry via Terraform.
+│   ├── shared-k8s-app-pipeline.yml # MASTER TEMPLATE: Reusable logic for building and scanning.
+│   ├── deploy-productpage.yml      # Caller pipeline for the Productpage microservice.
+│   ├── deploy-details.yml          # Caller pipeline for the Details microservice.
+│   ├── deploy-reviews.yml          # Caller pipeline for the Reviews microservice.
+│   └── deploy-ratings.yml          # Caller pipeline for the Ratings microservice.
 ├── environments/gcp-env-demo/
-│   ├── infrastructure/          # Layer 1: Base Cloud Infrastructure
-│   │   ├── backend-infra.tf     # Remote GCS backend configuration
-│   │   ├── deploy-infra.tf      # Main orchestration logic (VPC + GKE)
-│   │   ├── gen-infra-outputs.tf # Infrastructure resource outputs
-│   │   ├── providers-infra.tf   # Google Cloud provider definition
-│   │   ├── variables-infra.tf   # Variable declarations for infra
-│   │   └── infra.auto.tfvars    # Environment-specific values
-│   └── k8s-apps/                # Layer 2: Kubernetes Workloads
-│       ├── backend-k8s.tf       # Remote GCS backend for apps state
-│       ├── deploy-k8s.tf        # K8s Deployment & Service manifests
-│       ├── gen-k8s-outputs.tf   # App layer outputs
-│       ├── providers-k8s.tf     # K8s and Helm provider definitions
-│       ├── variables-k8s.tf     # Variable declarations for apps
-│       └── k8s.auto.tfvars      # App-specific parameters
-└── modules/                     # Reusable Terraform Modules
-    ├── vpc/                     # Network & Firewall logic
-    │   ├── main.tf              # VPC and Subnet resources
-    │   ├── variables.tf         # Module inputs
-    │   └── outputs.tf           # Module outputs
-    ├── gke/                     # GKE Cluster & Node Pool logic
-    │   ├── main.tf              # Cluster and Node Pool definition
-    │   ├── variables.tf         # GKE specific variables
-    │   └── outputs.tf           # GKE resource outputs
-    └── compute-engine/          # Bastion/Jumpbox configuration
-        ├── main.tf              # VM instance resources
-        ├── variables.tf         # VM specific inputs
-        └── outputs.tf           # VM outputs
+│   ├── infrastructure/             # Layer 1: Terraform Base Infrastructure.
+│   │   ├── deploy-infra.tf         # Main orchestration (VPC, GKE, APIs, IAM).
+│   │   ├── variables-infra.tf      # Infrastructure variable declarations.
+│   │   ├── providers-infra.tf      # Google Cloud provider configuration.
+│   │   ├── gen-infra-outputs.tf    # Outputs used by the app pipelines (Cluster name, Registry URL).
+│   │   └── infra.auto.tfvars       # Environment-specific values.
+│   └── k8s-manifests/              # Layer 2: Native Kubernetes State.
+│       ├── kustomization.yaml      # Kustomize entrypoint for image tag injection.
+│       ├── 00-namespace.yaml       # Dedicated namespace for the application.
+│       ├── 01-productpage.yaml     # Deployment and Service for the frontend.
+│       ├── 02-details.yaml         # Deployment and Service for the details backend.
+│       ├── 03-reviews.yaml         # Deployment and Services for the three reviews versions.
+│       └── 04-ratings.yaml         # Deployment and Service for the ratings backend.
+├── modules/                        # Reusable Terraform Modules.
+│   ├── vpc/                        # Network and Firewall logic.
+│   ├── gke/                        # GKE Cluster and Node Pool logic.
+│   └── artifact-registry/          # Docker repository provisioning with cleanup policies.
+├── src/bookinfo/                   # Application Source Code.
+│   ├── productpage/                # Python code + Official Dockerfile.
+│   ├── details/                    # Ruby code + Official Dockerfile.
+│   ├── reviews/                    # Java code + Official Dockerfile.
+│   └── ratings/                    # Node.js code + Official Dockerfile.
+├── scripts/
+│   └── fetch_bookinfo.sh           # Utility script to import official source code from Istio.
+└── README.md                       # This comprehensive documentation.
 ```
 
 ---
 
-## 🛤️ Branching Strategy & Path Filtering
+## 🚀 CI/CD Pipelines Explained
 
-This repository follows **Trunk-Based Development**, utilizing a single `main` branch as the **Single Source of Truth**.
+### 1. Modular "Caller" Pipelines
+Each microservice has its own dedicated pipeline file. These pipelines use **Path Filtering** to ensure they only run when their specific code or manifests change. This prevents unnecessary builds and reduces costs.
 
-### 1. Single Branch (Main-Only)
-We intentionally avoid long-lived feature branches or multiple environment branches (like `dev`, `staging`, `prod`). This approach:
-*   **Eliminates Merge Hell:** Ensures that all team members are working on the latest state.
-*   **Simplifies State:** What you see in `main` is exactly what is deployed (or being deployed) in the environment.
-
-### 2. Intelligent Path Triggers
-Since this is a "Monorepo-lite" containing both infrastructure and application manifests, we use GitHub Actions **Path Filtering** to decouple their lifecycles:
-
-*   **Infrastructure Changes:** Only modifications within `environments/gcp-env-demo/infrastructure/**` or `modules/**` trigger the `deploy-infra.yaml` pipeline.
-*   **Application Changes:** Only modifications within `environments/gcp-env-demo/k8s-apps/**` trigger the `deploy-apps.yml` pipeline.
-
-This ensures that updating a Kubernetes manifest doesn't trigger a full Terraform plan for the VPC/GKE cluster, saving time and reducing the risk of accidental infrastructure changes.
+### 2. Shared Master Template (`shared-k8s-app-pipeline.yml`)
+To keep the code DRY (Don't Repeat Yourself), all application pipelines call this shared template.
+*   **Dynamic Discovery:** The template does not have hardcoded values. It **reads the Terraform State** using `terraform output` to find the current GKE clúster name and Artifact Registry URL.
+*   **Build & Scan:** It builds the Docker image natively, pushes it to GCP, and performs the vulnerability scan.
+*   **Immutable Deployment:** It uses `kustomize edit set image` to replace the `latest` placeholder with the unique `github.sha` tag before deploying.
 
 ---
 
-## 📖 Why This Approach? (The GitOps Philosophy)
+## 🛠️ GCP Setup & Integration
 
-We chose this architecture to adhere to the core pillars of **GitOps**:
+### 1. Keyless Authentication (Workload Identity)
+The pipeline uses OIDC to securely authenticate without JSON keys. The GCP principal must be bound to the repository and the specific environment:
+`principal://iam.googleapis.com/projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/github-identity-pool/subject/repo:USER/REPO:environment:production`
 
-### 1. Declarative Everything
-The entire system—from the VPC and GKE cluster to the specific Kubernetes Deployments—is defined **declaratively** using Terraform. We don't use "click-ops" in the GCP console or `kubectl` commands.
-
-### 2. Versioned & Immutable
-Git acts as the immutable log for the environment. Every change to the infrastructure or the apps is captured in a commit. If something breaks, we don't "patch" the environment; we revert the commit or push a fix to Git.
-
-### 3. Automated Reconcilliation
-By using GitHub Actions, the system automatically attempts to reconcile the "Observed State" (what is running in GCP) with the "Desired State" (what is written in Git). 
-
-### 4. Decoupled Lifecycles
-We split **Infrastructure** from **Applications** because they move at different speeds:
-*   **Infra Layer:** Stable, rarely changed, and high-impact.
-*   **App Layer:** Fast-moving, frequently updated, and low-impact (isolated to the cluster).
-By separating them into different Terraform state files and workflows, we ensure a failure in an app deployment cannot corrupt the infrastructure state.
+### 2. Required APIs
+The infrastructure layer automatically ensures the following APIs are active:
+*   `containeranalysis.googleapis.com` (Vulnerability database)
+*   `ondemandscanning.googleapis.com` (Real-time image scanning)
 
 ---
 
-## 🚀 CI/CD Pipelines
+## 🛤️ Deployment Workflow (Step-by-Step)
 
-### 1. Infrastructure Pipeline (`deploy-infra.yaml`)
-Triggered by changes in `environments/gcp-env-demo/infrastructure/**` or manually.
-*   **Environment:** `production` (Required for IAM matching).
-*   **Auth:** Direct Principal Auth (no impersonation).
-*   **Logic:** Executes `terraform init`, `plan`, and `apply` (manual confirmation required for apply).
-
-### 2. Application Pipeline (`deploy-apps.yml`)
-Triggered by changes in `environments/gcp-env-demo/k8s-apps/**`.
-*   **Logic:** Uses the output of the Infrastructure layer (via remote state) to connect to the GKE cluster and deploy resources.
-
----
-
-## 🛠️ GCP Setup (One-Time)
-
-To enable the keyless authentication used in this repo, the following resources must be configured in GCP:
-
-### 1. Create Workload Identity Pool & Provider
-```bash
-# Create Identity Pool
-gcloud iam workload-identity-pools create "github-identity-pool" \
-  --project="developer-sandbox-489120" \
-  --location="global" \
-  --display-name="GitHub Actions Pool"
-
-# Create OIDC Provider for GitHub
-gcloud iam workload-identity-pools providers create-oidc "github" \
-  --project="developer-sandbox-489120" \
-  --location="global" \
-  --workload-identity-pool="github-identity-pool" \
-  --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository" \
-  --issuer-uri="https://token.actions.githubusercontent.com"
-```
-
-### 2. Grant Permissions to the GitHub Repository
-The IAM binding is strictly scoped to the repository and the GitHub Environment (`production`):
-
-```bash
-gcloud projects add-iam-policy-binding "developer-sandbox-489120" \
-  --role="roles/editor" \
-  --member="principal://iam.googleapis.com/projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/subject/repo:YOUR_GH_USER/kubernetes-cicd:environment:production"
-```
-
----
-
-## 🎯 Demo Walkthrough (Step-by-Step)
-
-This guide provides a structured flow to demonstrate the full lifecycle of the project, from infrastructure provisioning to application delivery.
-
-### Phase 1: Infrastructure Provisioning (Safe Rollout)
-1.  **Code Change:** Modify a variable in `environments/gcp-env-demo/infrastructure/infra.auto.tfvars` (e.g., change `std_node_count`).
-2.  **CI Trigger:** Push to `main`. The `deploy-infra.yaml` workflow triggers automatically.
-3.  **The "Safety Net":** Observe that the workflow executes `terraform plan` but **stops** before `apply`. This demonstrates a real-world production control.
-4.  **Manual Approval:** Go to the **Actions** tab in GitHub, select the latest run, and trigger the `workflow_dispatch` with the `run_apply` checkbox enabled to finalize the infra.
-
-### Phase 2: Application Deployment (GitOps Flow)
-1.  **Code Change:** Update a manifest in `environments/gcp-env-demo/k8s-apps/deploy-k8s.tf` (e.g., change the image version of `reviews-v3`).
-2.  **Intelligent Trigger:** Push to `main`. Notice that **only** the `deploy-apps.yml` pipeline triggers. The VPC/GKE infra remains untouched (Path Filtering).
-3.  **State Integration:** The App pipeline automatically "pulls" the GKE endpoint and credentials from the Infra state file via `terraform_remote_state`.
-4.  **Verification:** Once finished, access the `productpage` external IP (Type: LoadBalancer) to see the Bookinfo microservices communicating via Internal Services.
-
-### Phase 3: Zero-Trust Verification
-*   **Audit Log:** Check the GCP IAM console. You will see no Service Account keys. All actions are performed via the **Short-lived OIDC Token** granted to the GitHub Actions principal.
-
----
-
-## 🔧 Troubleshooting
-
-| Issue | Root Cause | Solution |
-| :--- | :--- | :--- |
-| **403 Forbidden** | IAM Principal mismatch | Ensure the `environment: 'production'` is set in the GitHub Workflow. |
-| **Backend 404** | GCS Bucket missing | Verify that the bucket `gcp-demo-gkefeb2026` exists in the project. |
-| **GKE 401 Unauth** | Cluster connectivity | Check if `master_authorized_networks` allows the GitHub Runner IP (currently set to 0.0.0.0/0). |
+1.  **Code Commit:** A developer pushes a change to `src/bookinfo/ratings/ratings.js`.
+2.  **Detection:** GitHub Actions triggers **only** the `Deploy: Ratings` workflow.
+3.  **Infrastructure Sync:** The pipeline initializes Terraform to read the current clúster and registry info.
+4.  **DevSecOps Cycle:**
+    *   Image is built with the commit SHA tag.
+    *   Image is pushed to Artifact Registry.
+    *   GCP performs a security scan.
+5.  **Kustomize Mutation:** The local `kustomization.yaml` is updated with the new image URL and SHA tag.
+6.  **GKE Apply:** `kubectl apply -k` is executed, and Kubernetes performs a rolling update of the Ratings service.
 
 ---
 
 ## 🧨 Environment Cleanup (Nuke Option)
 
-For development or cost-control purposes, this repository includes a **"Nuke" pipeline** (`nuke-destroy-envs.yaml`) designed to completely tear down the environment in the correct dependency order.
-
-⚠️ **Manual Trigger Only**: Unlike the deployment pipelines, this workflow **never** runs automatically on code changes. It must be manually invoked from the **GitHub Actions** tab.
-
-### 🛡️ Safety First (Dry Run Capability)
-The pipeline is designed with a **"Look Before You Leap"** approach:
-1.  **Manual Invocation**: Go to **Actions** > **🧨 NUKE: Destroy All Environments** > **Run workflow**.
-2.  **Confirmation Required**: You must manually type `DESTROY` in the workflow input.
-3.  **Dry Run by Default**: If the `run_destroy` checkbox is **unchecked**, the pipeline will only execute `terraform plan -destroy`. This allows you to inspect the logs and see exactly which resources (VPC, GKE, Services) would be deleted without actually touching them.
-4.  **Two-Step Execution**: Only when `run_destroy` is **checked** will the `terraform destroy` and state cleanup commands run.
-
-### 🔄 What is Destroyed?
-*   **Layer 1 (Apps)**: All Kubernetes deployments, services, and ingresses (Bookinfo).
-*   **Layer 2 (Infra)**: The GKE cluster, VPC, Subnets, Firewalls, and Bastion host.
-*   **Terraform State**: The `.tfstate` files in the GCS bucket are removed to ensure a clean slate for the next deployment.
-
-### 🔑 What Stays Alive? (Bootstrap Resources)
-To ensure you can redeploy the environment later without manual GCP console intervention, the following resources **are NOT touched**:
-*   **Workload Identity Federation (WIF)**: The Identity Pool and Provider remain active.
-*   **GCS Bucket**: The bucket itself is preserved, though the state files inside are cleared.
+The repository includes a safety-first destruction pipeline (`nuke-destroy-envs.yaml`):
+1.  **Plan First:** It always executes a `terraform plan -destroy` so you can review what will be deleted.
+2.  **Full Destruction:** Upon manual confirmation, it runs `terraform destroy` on the infrastructure layer.
+3.  **Implicit Cleanup:** By destroying the VPC and the GKE cluster, all Kubernetes workloads are automatically removed from Google Cloud.
 
 ---
-*Developed as a GitOps reference for GCP & Kubernetes.*
+*Developed as a modernized Cloud-Native reference for GCP, Kubernetes, and DevSecOps.*
