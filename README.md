@@ -1,500 +1,247 @@
-# GCP Cloud Infrastructure & GKE Deployment Pipeline
-# Terraform Google Cloud GitHub Actions Kubernetes
-
-A comprehensive automated solution for GCP Infrastructure provisioning and GKE Workload delivery. This project serves as a production-ready blueprint for organizations looking to validate GCP's potential or migrate legacy workloads (On-prem/Multi-cloud) into a modernized GKE environment.
+# 🚀 GCP Cloud Infrastructure & GKE Deployment Pipeline
 
 ![Terraform](https://img.shields.io/badge/terraform-%235835CC.svg?style=for-the-badge&logo=terraform&logoColor=white)
 ![Google Cloud](https://img.shields.io/badge/GoogleCloud-%234285F4.svg?style=for-the-badge&logo=google-cloud&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/github%20actions-%232671E5.svg?style=for-the-badge&logo=githubactions&logoColor=white)
 ![Kubernetes](https://img.shields.io/badge/kubernetes-%23326ce5.svg?style=for-the-badge&logo=kubernetes&logoColor=white)
-![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
-![Security](https://img.shields.io/badge/security-GCP_Container_Analysis-blue?style=for-the-badge)
 
-## 📖 1. PROJECT VISION & CORE PHILOSOPHY
-
-This repository is a high-fidelity technical framework designed to implement and validate a **state-of-the-art Cloud-Native Architecture** on Google Cloud Platform (GCP). It represents a complete engineering shift from traditional monolithic deployments toward a **Zero-Trust, Immutable, and Decoupled ecosystem**.
-
-### 1.1 The Modernization Mandate
-The primary goal of this architecture is to solve the "Configuration Drift" and "Security Debt" problems common in aging cloud environments. We achieve this by enforcing a strict **Separation of Concerns**, where infrastructure and applications are managed as independent but perfectly synchronized layers.
-
-In traditional environments, developers often rely on manual console operations ("Click-Ops") that leave no auditable trail. By migrating to this model, every system change (networking, clusters, apps) must pass through version control. This ensures that Infrastructure as Code (IaC) is the single source of truth for the entire platform.
-
-### 1.2 Architectural Pillars
-*   **Immutable Workloads:** Every microservice is packaged as a versioned container image tagged with a unique GitHub SHA. We never overwrite `:latest`. This means if a bug is introduced in production, the rollback is deterministic: we simply point Kustomize to the previous Git SHA, and the cluster pulls the exact binary that worked.
-*   **Infrastructure as Code (IaC):** 100% of the GCP resources are defined in Terraform. Manual interventions are strictly forbidden by governance policy. Definitions are stored remotely (GCS backend), allowing multiple engineers to collaborate without state corruption.
-*   **Shift-Left Security:** Security is a blocking gate in the pipeline. Vulnerability scanning occurs before any code touches the production cluster. By intercepting critical vulnerabilities in the CI phase, we prevent malicious code or vulnerable dependencies from being exploited at runtime.
-*   **GitOps Source of Truth:** Git is the only authority for the system's state. If an operator makes a manual change via `kubectl edit`, our CD flow will relentlessly overwrite it in the next execution to ensure the cluster reality matches the Git definition.
+A comprehensive automated solution for **GCP Infrastructure provisioning** and **GKE Workload delivery**. This project serves as a **production-ready blueprint** for organizations looking to validate GCP's potential or migrate legacy workloads (On-prem/Multi-cloud) into a modernized GKE environment.
 
 ---
 
-## 🏛️ 2. LAYERED ARCHITECTURAL STACK (THE "TODO CON TODO")
+## 🏗️ Architecture Overview
 
-Our architecture is divided into three distinct functional layers. Each layer has its own lifecycle, security model, and failure domain. This separation is crucial for minimizing the "blast radius" of any misconfiguration.
+The system is designed to manage the full lifecycle of a GKE-based environment within the GCP project `developer-sandbox-489120`.
 
-### 2.1 Layer 1: The Foundation (GCP Infrastructure via Terraform)
-Managed in `environments/gcp-env-demo/infrastructure/`, this layer provides the "static" and persistent resources of the system.
+*   **GCP Networking:** Custom VPC with isolated subnets for GKE Nodes, Services, and Management (Jumpbox).
+*   **GKE Compute:** A Google Kubernetes Engine (GKE) **Standard** Cluster with private nodes and master authorized networks.
+*   **Security & Identity:** **Keyless Authentication** using Workload Identity Federation (WIF) and direct principal bindings.
+*   **GKE Workloads:** Automated deployment of the **Bookinfo** microservices suite via the Terraform `kubernetes` provider.
 
-#### 🛰️ Networking Topology (VPC & Subnets)
-We implement a **Custom Lean VPC** (`modules/vpc/`) designed specifically for secure GKE workloads.
-*   **Private Service Connect (PSC):** We use PSC for GKE. Instead of exposing the Kubernetes control plane (Master Node) to the public internet, we create an internal bridge between our VPC and Google's management plane. This prevents direct attacks on the Kubernetes API.
-*   **Cloud NAT & Router:** Although our nodes are 100% private (no public IPs), they need to connect to the internet to download OS patches or interact with external APIs. Cloud NAT acts as a secure outbound-only funnel, preventing unwanted inbound connections.
-*   **Subnet Optimization:** We refactored the network to a single, high-throughput subnet for GKE nodes (`10.0.0.0/24`), reducing latency and IP management overhead. Pods and Services use secondary ranges within this subnet to avoid IP exhaustion.
-
-#### ☸️ GKE Standard Compute Cluster
-We utilize **GKE Standard** (`modules/gke/`) to maintain granular control over the compute infrastructure.
-*   **Private Nodes:** All worker nodes reside in a private subnet. This is imperative for Zero-Trust architectures.
-*   **Master Authorized Networks:** Only trusted IPs (including the GitHub Actions runner IP blocks) can communicate with the Kubernetes API to inject configurations.
-*   **Drift Protection:** The GKE module includes `lifecycle { ignore_changes = [node_config[0].resource_manager_tags] }` to prevent Terraform from fighting with GCP's internal metadata system, preventing destructive cluster recreations.
-
-#### 📦 Artifact Registry (Secure Storage)
-A centralized repository (`bookinfo-repo`) manages all microservice images.
-*   **Cleanup Policy:** We implemented `keep_count = 10`. This automatically purges old images, ensuring cost optimization and preventing infinite storage growth.
-*   **IAM Integration:** Explicit `roles/artifactregistry.reader` is granted to GKE nodes so the kubelet can pull images without explicit credentials in the YAML manifests.
+### 🧩 Why Bookinfo? (Simple but Powerful)
+For this demo, we selected the **Bookinfo** application because it provides a realistic view of a **Polyglot Microservices Architecture**:
+*   **Diverse Runtimes:** It includes four services written in different languages (**Python, Java, Ruby, and Node.js**), proving GKE's versatility for any runtime.
+*   **Chain of Communication:** It features a complex flow (`Productpage` -> `Details` & `Reviews` -> `Ratings`), perfect for demonstrating internal DNS and Service discovery.
+*   **Versioning Support:** With three versions of the `Reviews` service (v1, v2, v3), we can showcase GKE's power to handle multiple versions and traffic distribution directly via Terraform.
 
 ---
 
-### 2.2 Layer 2: The Workload (Bookinfo Microservices)
-Managed in `src/bookinfo/` and `environments/gcp-env-demo/k8s-manifests/`.
+## 🌟 GKE: The Strategic Landing Zone for Modernization
 
-#### 🧩 Polyglot Service Suite
-The **Bookinfo** app is the perfect stress-test for GKE, requiring complex orchestration:
-*   **Productpage (Python):** The frontend web entry point. It communicates internally with `details` and `reviews`. Written in Python (Flask).
-*   **Details (Ruby):** Provides book metadata. Written in Ruby.
-*   **Reviews (Java):** High-performance Java service (WebSphere Liberty) with 3 concurrent versions to test advanced routing.
-*   **Ratings (Node.js):** Mock database backend providing ratings to the reviews service.
+This repository is specifically designed to demonstrate the power of **Google Kubernetes Engine (GKE)** as the ultimate target for cloud migration and modernization strategies.
 
-#### 🛠️ Kustomize Orchestration
-We use **Kustomize** instead of Helm for its native simplicity.
-*   **Image Placeholders:** Manifest files use generic names like `productpage-image`.
-*   **Dynamic Patching:** The CI/CD uses `kustomize edit set image` at the precise build moment. It replaces the placeholder with the Artifact Registry URL and the commit SHA, merging declarative config with imperative build steps seamlessly.
+### 🛡️ From Legacy to Zero-Trust
+Organizations migrating from On-prem or other clouds often struggle with secret management. This blueprint eliminates long-lived Service Account keys by using **Workload Identity Federation**, providing a secure, keyless integration between GitHub and GCP that is impossible to replicate in legacy environments.
 
----
+### ⚙️ Managed Excellence vs. Operational Overhead
+By moving to GKE, teams shift from managing complex Kubernetes control planes and infrastructure to consuming a high-availability managed service. This project showcases how GCP handles:
+*   **Auto-repair & Auto-upgrade:** Keeping the fleet healthy without manual intervention.
+*   **VPC-Native Networking:** Seamless integration with GCP's global network for low-latency communication.
 
-### 2.3 Layer 3: The Orchestrator (GitHub Actions & OIDC)
-Located in `.github/workflows/`. This is the brain that automates the synchronization between code and cloud.
-
-#### 🔐 Workload Identity Federation (WIF)
-A **Keyless Security Model**.
-*   **Mechanism:** GitHub Actions presents an OIDC token to GCP. GCP verifies the claim comes exactly from the `luisalclo/kubernetes-cicd` repository and the permitted branch. Upon matching the WIF Pool config, GCP issues a temporary access token to interact with its APIs (e.g., for container scanning or infra deployment).
-*   **Benefit:** Zero secrets in GitHub. Historically, static Service Account JSON keys were leaked, resulting in massive security incidents. With WIF, the attack vector is reduced to zero because credentials last only for the pipeline duration.
+### 🚀 High-Velocity Developer Experience
+The deep integration with **GitHub Actions** ensures that developers can move workloads to GCP without learning new proprietary tools. If it runs in a container, it runs on GKE with the same CI/CD patterns they already know, but with the added scalability and reliability of Google Cloud.
 
 ---
 
-## 🔐 3. THE DEVSECOPS PIPELINE: ANATOMY OF A DEPLOYMENT
+## 🔐 Authentication Flow (Workload Identity Federation)
+
+To achieve zero-trust and eliminate the need for long-lived Service Account JSON keys, this project uses OIDC-based authentication.
 
 ```mermaid
 sequenceDiagram
-    participant Dev as Developer (Push Code)
-    participant GHA as GitHub Actions Runner
-    participant TF as Terraform State (GCS)
-    participant AR as Artifact Registry (GCP)
-    participant SCA as GCP Container Analysis
-    participant GKE as GKE Cluster
+    participant GitHub as GitHub Actions
+    participant OIDC as GCP Identity Pool
+    participant IAM as GCP IAM (Principal)
+    participant TF as Terraform
+    participant GKE as Google Kubernetes Engine
 
-    Dev->>GHA: 1. git push to main
-    GHA->>TF: 2. Fetch Infrastructure Outputs (Cluster Name, AR URL)
-    Note over GHA,TF: "Discovery Step": No hardcoded strings.
-    GHA->>GHA: 3. docker build -t <GAR_URL>/<app>:<SHA>
-    GHA->>AR: 4. docker push (Immutable Tag)
-    GHA->>SCA: 5. gcloud artifacts docker images scan
-    SCA-->>GHA: 6. Analyze Layers & Package Versions
-    
-    alt CRITICAL Detected
-        GHA--xDev: 7a. Pipeline FAILURE (Exit 1) & Alert
-    else Clean Scan
-        GHA->>GHA: 7b. kustomize edit set image (Inject SHA)
-        GHA->>GKE: 8. kubectl apply -l app=<name> (Atomic Deploy)
-    end
+    GitHub->>OIDC: 1. Request Auth (OIDC Token)
+    OIDC-->>GitHub: 2. Validate Token (Repo & Environment check)
+    GitHub->>IAM: 3. Assume Direct Principal Role
+    IAM-->>TF: 4. Grant Editor / Admin Permissions
+    TF->>GKE: 5. Execute Plan / Apply (Infra & K8s Apps)
 ```
 
-### 3.1 Step-by-Step Logic Breakdown
+---
 
-1.  **Checkout:** Retrieves the source code.
-2.  **GCP Auth:** Establishes the secure OIDC WIF bridge.
-3.  **Dynamic Discovery:** 
-    *   This is a crucial step. The pipeline runs `terraform output -raw` to dynamically find out the current GKE cluster name and the exact Artifact Registry URL.
-    *   **Why?** Because by abstracting these values from hardcoded GitHub variables, we allow Terraform to be the true master of topology. If we recreate the environment with a new name, the pipeline adapts instantly without human intervention.
-4.  **Native Build:** Builds the image with the language-specific Dockerfile.
-5.  **Hardened Push:** Pushes the image to the registry with the immutable `github.sha` tag.
-6.  **GCP On-Demand Scanning:**
-    *   Synchronously calls the `Container Analysis` API.
-    *   This API unpacks the Docker image, reads base OS layers, and cross-references all packages (npm, pip, gems) against global CVE databases.
-    *   If a CRITICAL vulnerability is detected, the process fails immediately (Exit 1), blocking code promotion and protecting the environment.
-7.  **Kustomize Build:** Declaratively injects the new image.
-8.  **Atomic Kubectl Apply:**
-    *   `00-namespace.yaml` is applied first.
-    *   Then, `kubectl apply -l app=<name> -f -`. This uses a label selector to ensure that if 4 GitHub Actions pipelines are running in parallel (one for each microservice), they don't collide when applying the full `kustomization.yaml`. They only apply resources corresponding to their microservice.
+## 📁 Repository Structure
+
+The codebase is organized into modular components to separate infrastructure lifecycle from application delivery.
+
+```text
+.
+├── .github/workflows/
+│   ├── deploy-infra.yaml        # Provisions VPC, Subnets, and GKE Cluster
+│   ├── deploy-apps.yml          # Deploys K8s workloads via Terraform provider
+│   └── build-deploy.yml         # Shared or legacy CI/CD logic
+├── environments/gcp-env-demo/
+│   ├── infrastructure/          # Layer 1: Base Cloud Infrastructure
+│   │   ├── backend-infra.tf     # Remote GCS backend configuration
+│   │   ├── deploy-infra.tf      # Main orchestration logic (VPC + GKE)
+│   │   ├── gen-infra-outputs.tf # Infrastructure resource outputs
+│   │   ├── providers-infra.tf   # Google Cloud provider definition
+│   │   ├── variables-infra.tf   # Variable declarations for infra
+│   │   └── infra.auto.tfvars    # Environment-specific values
+│   └── k8s-apps/                # Layer 2: Kubernetes Workloads
+│       ├── backend-k8s.tf       # Remote GCS backend for apps state
+│       ├── deploy-k8s.tf        # K8s Deployment & Service manifests
+│       ├── gen-k8s-outputs.tf   # App layer outputs
+│       ├── providers-k8s.tf     # K8s and Helm provider definitions
+│       ├── variables-k8s.tf     # Variable declarations for apps
+│       └── k8s.auto.tfvars      # App-specific parameters
+└── modules/                     # Reusable Terraform Modules
+    ├── vpc/                     # Network & Firewall logic
+    │   ├── main.tf              # VPC and Subnet resources
+    │   ├── variables.tf         # Module inputs
+    │   └── outputs.tf           # Module outputs
+    ├── gke/                     # GKE Cluster & Node Pool logic
+    │   ├── main.tf              # Cluster and Node Pool definition
+    │   ├── variables.tf         # GKE specific variables
+    │   └── outputs.tf           # GKE resource outputs
+    └── compute-engine/          # Bastion/Jumpbox configuration
+        ├── main.tf              # VM instance resources
+        ├── variables.tf         # VM specific inputs
+        └── outputs.tf           # VM outputs
+```
 
 ---
 
-## 📁 4. FORENSIC FILE INVENTORY
+## 🛤️ Branching Strategy & Path Filtering
 
-A granular view of why every file exists in this repository.
+This repository follows **Trunk-Based Development**, utilizing a single `main` branch as the **Single Source of Truth**.
 
-### 📂 Root Directory
-*   `README.md`: This engineering manual.
-*   `scripts/fetch_bookinfo.sh`: Vital utility to populate the local repo (Sparse-Checkout) with the official Istio demo app source code, allowing real app compilation.
+### 1. Single Branch (Main-Only)
+We intentionally avoid long-lived feature branches or multiple environment branches (like `dev`, `staging`, `prod`). This approach:
+*   **Eliminates Merge Hell:** Ensures that all team members are working on the latest state.
+*   **Simplifies State:** What you see in `main` is exactly what is deployed (or being deployed) in the environment.
 
-### 📂 `.github/workflows/` (Automation Logic)
-*   **`shared-k8s-app-pipeline.yml`**: The DRY (Don't Repeat Yourself) masterpiece. A reusable workflow (Workflow Call) that receives app name and directory, executing the 8 master pipeline steps.
-*   **`deploy-productpage.yml` to `deploy-ratings.yml`**: Trigger workflows. They observe changes (`paths:`) in their respective code directories and call the master pipeline.
-*   **`deploy-infra.yaml`**: Continuous Infrastructure. Runs `terraform plan` automatically, and a conditional `apply` via manual intervention ("checkbox") ensuring a human operator reviews the Terraform execution plan before altering the cloud.
-*   **`nuke-destroy-envs.yaml`**: Panic Button / Cost Saving. Executes a total `terraform destroy`, neatly demolishing orphan resources.
+### 2. Intelligent Path Triggers
+Since this is a "Monorepo-lite" containing both infrastructure and application manifests, we use GitHub Actions **Path Filtering** to decouple their lifecycles:
 
-### 📂 `environments/gcp-env-demo/infrastructure/` (Infrastructure as Code)
-*   **`deploy-infra.tf`**: Invokes base modules and orchestrates connections (e.g., enabling required GCP APIs for scanning).
-*   **`gen-infra-outputs.tf`**: The API interface between Terraform and GitHub Actions, exporting vital dynamic data.
-*   **`infra.auto.tfvars`**: Real variable injection. Configures node sizes and networks.
-*   **`providers-infra.tf`**: Rigid version locking to prevent failures from abrupt Google provider updates.
-*   **`variables-infra.tf`**: Strict data type validations (e.g., ensuring a list is a list).
+*   **Infrastructure Changes:** Only modifications within `environments/gcp-env-demo/infrastructure/**` or `modules/**` trigger the `deploy-infra.yaml` pipeline.
+*   **Application Changes:** Only modifications within `environments/gcp-env-demo/k8s-apps/**` trigger the `deploy-apps.yml` pipeline.
 
-### 📂 `environments/gcp-env-demo/k8s-manifests/` (Desired App State)
-*   **`kustomization.yaml`**: The pivot point. Concentrates "what" will be applied.
-*   **`01-productpage.yaml` to `04-ratings.yaml`**: Raw Kubernetes specs (Deployments and Services), parameterized with placeholders.
-
-### 📂 `modules/` (Reusable Terraform Logic)
-*   Standardized black boxes (`vpc`, `gke`, `artifact-registry`) applying best practices (like specific subnets and advanced logging) repeatably, promoting consistency across multiple clusters.
-
-### 📂 `src/bookinfo/` (Microservice Code)
-*   Application code extracted directly from sources to compile locally with their own optimized multi-stage `Dockerfile`.
+This ensures that updating a Kubernetes manifest doesn't trigger a full Terraform plan for the VPC/GKE cluster, saving time and reducing the risk of accidental infrastructure changes.
 
 ---
 
-## ⚠️ 5. GOVERNANCE & STATE MANAGEMENT (DRIFT CONTROL)
+## 📖 Why This Approach? (The GitOps Philosophy)
 
-### 5.1 Infrastructure Drift
-If someone with excessive permissions in the GCP Console manually adds a firewall rule, the next CI `terraform plan` will detect an inconsistency (Drift). The Platform Engineering team will be forced to either code that rule into Terraform or apply the current base code, thus destroying the unauthorized manual change. This is Automated Governance.
+We chose this architecture to adhere to the core pillars of **GitOps**:
 
-### 5.2 Application Drift (The "Ghost" Edit)
-Kubernetes is dynamic. Tools can edit it on the fly. However, our **GitOps** approach ensures any change made outside this repository (manual scaling, env variable changes) is considered "Ephemeral Technical Debt" and is immediately reverted by the system in the next deployment, ensuring "Declarative State Immutability".
+### 1. Declarative Everything
+The entire system—from the VPC and GKE cluster to the specific Kubernetes Deployments—is defined **declaratively** using Terraform. We don't use "click-ops" in the GCP console or `kubectl` commands.
+
+### 2. Versioned & Immutable
+Git acts as the immutable log for the environment. Every change to the infrastructure or the apps is captured in a commit. If something breaks, we don't "patch" the environment; we revert the commit or push a fix to Git.
+
+### 3. Automated Reconcilliation
+By using GitHub Actions, the system automatically attempts to reconcile the "Observed State" (what is running in GCP) with the "Desired State" (what is written in Git). 
+
+### 4. Decoupled Lifecycles
+We split **Infrastructure** from **Applications** because they move at different speeds:
+*   **Infra Layer:** Stable, rarely changed, and high-impact.
+*   **App Layer:** Fast-moving, frequently updated, and low-impact (isolated to the cluster).
+By separating them into different Terraform state files and workflows, we ensure a failure in an app deployment cannot corrupt the infrastructure state.
 
 ---
 
-## 🚀 6. STEP-BY-STEP OPERATIONAL GUIDE
+## 🚀 CI/CD Pipelines
 
-### Phase 1: Bootstrap (The "Day Zero")
-To initialize the project, it is mandatory to extract the microservices:
+### 1. Infrastructure Pipeline (`deploy-infra.yaml`)
+Triggered by changes in `environments/gcp-env-demo/infrastructure/**` or manually.
+*   **Environment:** `production` (Required for IAM matching).
+*   **Auth:** Direct Principal Auth (no impersonation).
+*   **Logic:** Executes `terraform init`, `plan`, and `apply` (manual confirmation required for apply).
+
+### 2. Application Pipeline (`deploy-apps.yml`)
+Triggered by changes in `environments/gcp-env-demo/k8s-apps/**`.
+*   **Logic:** Uses the output of the Infrastructure layer (via remote state) to connect to the GKE cluster and deploy resources.
+
+---
+
+## 🛠️ GCP Setup (One-Time)
+
+To enable the keyless authentication used in this repo, the following resources must be configured in GCP:
+
+### 1. Create Workload Identity Pool & Provider
 ```bash
-chmod +x scripts/fetch_bookinfo.sh
-./scripts/fetch_bookinfo.sh
+# Create Identity Pool
+gcloud iam workload-identity-pools create "github-identity-pool" \
+  --project="developer-sandbox-489120" \
+  --location="global" \
+  --display-name="GitHub Actions Pool"
+
+# Create OIDC Provider for GitHub
+gcloud iam workload-identity-pools providers create-oidc "github" \
+  --project="developer-sandbox-489120" \
+  --location="global" \
+  --workload-identity-pool="github-identity-pool" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository" \
+  --issuer-uri="https://token.actions.githubusercontent.com"
 ```
 
-### Phase 2: Building the Cloud (Layer 1)
-1.  Go to **Actions** -> **Deploy Infra (Terraform)**.
-2.  Run the pipeline explicitly checking **"Run Terraform Apply?"**.
-3.  This creates the backbone: VPC, Cluster, Repositories, IAM Permissions.
+### 2. Grant Permissions to the GitHub Repository
+The IAM binding is strictly scoped to the repository and the GitHub Environment (`production`):
 
-### Phase 3: Launching Microservices (Layer 2)
-1.  A simple `git push` to `main` will trigger the magic.
-2.  GitHub Actions will evaluate modified directories and launch relevant pipelines in parallel.
-3.  You will observe how security layers and atomic deployment are orchestrated in real-time.
-
-### Phase 4: Validation
-Verify local access by port-forwarding to access through the private node securely:
 ```bash
-kubectl get svc productpage -n bookinfo
-kubectl port-forward svc/productpage 8080:9080 -n bookinfo
+gcloud projects add-iam-policy-binding "developer-sandbox-489120" \
+  --role="roles/editor" \
+  --member="principal://iam.googleapis.com/projects/697350290405/locations/global/workloadIdentityPools/github-identity-pool/subject/repo:YOUR_GH_USER/kubernetes-cicd:environment:production"
 ```
 
 ---
 
-## 🛠️ 7. TROUBLESHOOTING & COMMON PITFALLS
+## 🎯 Demo Walkthrough (Step-by-Step)
 
-*   **Artifact Registry 403:** This error indicates an OIDC sync failure. Ensure WIF Pool exactly matches the URL configured in GitHub, and the On-Demand Scanning API is operational in GCP.
-*   **Terraform State Locked:** An abruptly cancelled pipeline may leave an orphan lock (`.tflock`) in the GCS bucket. It must be manually removed via `gsutil` to unblock future executions.
-*   **Kustomize Build Fail:** Frequent if a YAML manifest doesn't comply with strict Kubernetes schema or is misreferenced in `kustomization.yaml`.
+This guide provides a structured flow to demonstrate the full lifecycle of the project, from infrastructure provisioning to application delivery.
+
+### Phase 1: Infrastructure Provisioning (Safe Rollout)
+1.  **Code Change:** Modify a variable in `environments/gcp-env-demo/infrastructure/infra.auto.tfvars` (e.g., change `std_node_count`).
+2.  **CI Trigger:** Push to `main`. The `deploy-infra.yaml` workflow triggers automatically.
+3.  **The "Safety Net":** Observe that the workflow executes `terraform plan` but **stops** before `apply`. This demonstrates a real-world production control.
+4.  **Manual Approval:** Go to the **Actions** tab in GitHub, select the latest run, and trigger the `workflow_dispatch` with the `run_apply` checkbox enabled to finalize the infra.
+
+### Phase 2: Application Deployment (GitOps Flow)
+1.  **Code Change:** Update a manifest in `environments/gcp-env-demo/k8s-apps/deploy-k8s.tf` (e.g., change the image version of `reviews-v3`).
+2.  **Intelligent Trigger:** Push to `main`. Notice that **only** the `deploy-apps.yml` pipeline triggers. The VPC/GKE infra remains untouched (Path Filtering).
+3.  **State Integration:** The App pipeline automatically "pulls" the GKE endpoint and credentials from the Infra state file via `terraform_remote_state`.
+4.  **Verification:** Once finished, access the `productpage` external IP (Type: LoadBalancer) to see the Bookinfo microservices communicating via Internal Services.
+
+### Phase 3: Zero-Trust Verification
+*   **Audit Log:** Check the GCP IAM console. You will see no Service Account keys. All actions are performed via the **Short-lived OIDC Token** granted to the GitHub Actions principal.
 
 ---
 
-## 🧨 8. EMERGENCY DECOMMISSIONING (THE NUKE)
+## 🔧 Troubleshooting
 
-To eliminate residual costs and erase all cluster traces:
-1.  Run the **NUKE: Plan & Destroy Environments** Action.
-2.  This pipeline not only issues destruction APIs to Google but also iteratively purges the remote Terraform state.
+| Issue | Root Cause | Solution |
+| :--- | :--- | :--- |
+| **403 Forbidden** | IAM Principal mismatch | Ensure the `environment: 'production'` is set in the GitHub Workflow. |
+| **Backend 404** | GCS Bucket missing | Verify that the bucket `gcp-demo-gkefeb2026` exists in the project. |
+| **GKE 401 Unauth** | Cluster connectivity | Check if `master_authorized_networks` allows the GitHub Runner IP (currently set to 0.0.0.0/0). |
 
 ---
-*Authored by Alonso Gonzalez as the definitive engineering reference for Modernized GKE Workloads on Google Cloud.*
-<!-- technical_padding_line_001 -->
-<!-- technical_padding_line_002 -->
-<!-- technical_padding_line_003 -->
-<!-- technical_padding_line_004 -->
-<!-- technical_padding_line_005 -->
-<!-- technical_padding_line_006 -->
-<!-- technical_padding_line_007 -->
-<!-- technical_padding_line_008 -->
-<!-- technical_padding_line_009 -->
-<!-- technical_padding_line_010 -->
-<!-- technical_padding_line_011 -->
-<!-- technical_padding_line_012 -->
-<!-- technical_padding_line_013 -->
-<!-- technical_padding_line_014 -->
-<!-- technical_padding_line_015 -->
-<!-- technical_padding_line_016 -->
-<!-- technical_padding_line_017 -->
-<!-- technical_padding_line_018 -->
-<!-- technical_padding_line_019 -->
-<!-- technical_padding_line_020 -->
-<!-- technical_padding_line_021 -->
-<!-- technical_padding_line_022 -->
-<!-- technical_padding_line_023 -->
-<!-- technical_padding_line_024 -->
-<!-- technical_padding_line_025 -->
-<!-- technical_padding_line_026 -->
-<!-- technical_padding_line_027 -->
-<!-- technical_padding_line_028 -->
-<!-- technical_padding_line_029 -->
-<!-- technical_padding_line_030 -->
-<!-- technical_padding_line_031 -->
-<!-- technical_padding_line_032 -->
-<!-- technical_padding_line_033 -->
-<!-- technical_padding_line_034 -->
-<!-- technical_padding_line_035 -->
-<!-- technical_padding_line_036 -->
-<!-- technical_padding_line_037 -->
-<!-- technical_padding_line_038 -->
-<!-- technical_padding_line_039 -->
-<!-- technical_padding_line_040 -->
-<!-- technical_padding_line_041 -->
-<!-- technical_padding_line_042 -->
-<!-- technical_padding_line_043 -->
-<!-- technical_padding_line_044 -->
-<!-- technical_padding_line_045 -->
-<!-- technical_padding_line_046 -->
-<!-- technical_padding_line_047 -->
-<!-- technical_padding_line_048 -->
-<!-- technical_padding_line_049 -->
-<!-- technical_padding_line_050 -->
-<!-- technical_padding_line_051 -->
-<!-- technical_padding_line_052 -->
-<!-- technical_padding_line_053 -->
-<!-- technical_padding_line_054 -->
-<!-- technical_padding_line_055 -->
-<!-- technical_padding_line_056 -->
-<!-- technical_padding_line_057 -->
-<!-- technical_padding_line_058 -->
-<!-- technical_padding_line_059 -->
-<!-- technical_padding_line_060 -->
-<!-- technical_padding_line_061 -->
-<!-- technical_padding_line_062 -->
-<!-- technical_padding_line_063 -->
-<!-- technical_padding_line_064 -->
-<!-- technical_padding_line_065 -->
-<!-- technical_padding_line_066 -->
-<!-- technical_padding_line_067 -->
-<!-- technical_padding_line_068 -->
-<!-- technical_padding_line_069 -->
-<!-- technical_padding_line_070 -->
-<!-- technical_padding_line_071 -->
-<!-- technical_padding_line_072 -->
-<!-- technical_padding_line_073 -->
-<!-- technical_padding_line_074 -->
-<!-- technical_padding_line_075 -->
-<!-- technical_padding_line_076 -->
-<!-- technical_padding_line_077 -->
-<!-- technical_padding_line_078 -->
-<!-- technical_padding_line_079 -->
-<!-- technical_padding_line_080 -->
-<!-- technical_padding_line_081 -->
-<!-- technical_padding_line_082 -->
-<!-- technical_padding_line_083 -->
-<!-- technical_padding_line_084 -->
-<!-- technical_padding_line_085 -->
-<!-- technical_padding_line_086 -->
-<!-- technical_padding_line_087 -->
-<!-- technical_padding_line_088 -->
-<!-- technical_padding_line_089 -->
-<!-- technical_padding_line_090 -->
-<!-- technical_padding_line_091 -->
-<!-- technical_padding_line_092 -->
-<!-- technical_padding_line_093 -->
-<!-- technical_padding_line_094 -->
-<!-- technical_padding_line_095 -->
-<!-- technical_padding_line_096 -->
-<!-- technical_padding_line_097 -->
-<!-- technical_padding_line_098 -->
-<!-- technical_padding_line_099 -->
-<!-- technical_padding_line_100 -->
-<!-- technical_padding_line_101 -->
-<!-- technical_padding_line_102 -->
-<!-- technical_padding_line_103 -->
-<!-- technical_padding_line_104 -->
-<!-- technical_padding_line_105 -->
-<!-- technical_padding_line_106 -->
-<!-- technical_padding_line_107 -->
-<!-- technical_padding_line_108 -->
-<!-- technical_padding_line_109 -->
-<!-- technical_padding_line_110 -->
-<!-- technical_padding_line_111 -->
-<!-- technical_padding_line_112 -->
-<!-- technical_padding_line_113 -->
-<!-- technical_padding_line_114 -->
-<!-- technical_padding_line_115 -->
-<!-- technical_padding_line_116 -->
-<!-- technical_padding_line_117 -->
-<!-- technical_padding_line_118 -->
-<!-- technical_padding_line_119 -->
-<!-- technical_padding_line_120 -->
-<!-- technical_padding_line_121 -->
-<!-- technical_padding_line_122 -->
-<!-- technical_padding_line_123 -->
-<!-- technical_padding_line_124 -->
-<!-- technical_padding_line_125 -->
-<!-- technical_padding_line_126 -->
-<!-- technical_padding_line_127 -->
-<!-- technical_padding_line_128 -->
-<!-- technical_padding_line_129 -->
-<!-- technical_padding_line_130 -->
-<!-- technical_padding_line_131 -->
-<!-- technical_padding_line_132 -->
-<!-- technical_padding_line_133 -->
-<!-- technical_padding_line_134 -->
-<!-- technical_padding_line_135 -->
-<!-- technical_padding_line_136 -->
-<!-- technical_padding_line_137 -->
-<!-- technical_padding_line_138 -->
-<!-- technical_padding_line_139 -->
-<!-- technical_padding_line_140 -->
-<!-- technical_padding_line_141 -->
-<!-- technical_padding_line_142 -->
-<!-- technical_padding_line_143 -->
-<!-- technical_padding_line_144 -->
-<!-- technical_padding_line_145 -->
-<!-- technical_padding_line_146 -->
-<!-- technical_padding_line_147 -->
-<!-- technical_padding_line_148 -->
-<!-- technical_padding_line_149 -->
-<!-- technical_padding_line_150 -->
-<!-- technical_padding_line_151 -->
-<!-- technical_padding_line_152 -->
-<!-- technical_padding_line_153 -->
-<!-- technical_padding_line_154 -->
-<!-- technical_padding_line_155 -->
-<!-- technical_padding_line_156 -->
-<!-- technical_padding_line_157 -->
-<!-- technical_padding_line_158 -->
-<!-- technical_padding_line_159 -->
-<!-- technical_padding_line_160 -->
-<!-- technical_padding_line_161 -->
-<!-- technical_padding_line_162 -->
-<!-- technical_padding_line_163 -->
-<!-- technical_padding_line_164 -->
-<!-- technical_padding_line_165 -->
-<!-- technical_padding_line_166 -->
-<!-- technical_padding_line_167 -->
-<!-- technical_padding_line_168 -->
-<!-- technical_padding_line_169 -->
-<!-- technical_padding_line_170 -->
-<!-- technical_padding_line_171 -->
-<!-- technical_padding_line_172 -->
-<!-- technical_padding_line_173 -->
-<!-- technical_padding_line_174 -->
-<!-- technical_padding_line_175 -->
-<!-- technical_padding_line_176 -->
-<!-- technical_padding_line_177 -->
-<!-- technical_padding_line_178 -->
-<!-- technical_padding_line_179 -->
-<!-- technical_padding_line_180 -->
-<!-- technical_padding_line_181 -->
-<!-- technical_padding_line_182 -->
-<!-- technical_padding_line_183 -->
-<!-- technical_padding_line_184 -->
-<!-- technical_padding_line_185 -->
-<!-- technical_padding_line_186 -->
-<!-- technical_padding_line_187 -->
-<!-- technical_padding_line_188 -->
-<!-- technical_padding_line_189 -->
-<!-- technical_padding_line_190 -->
-<!-- technical_padding_line_191 -->
-<!-- technical_padding_line_192 -->
-<!-- technical_padding_line_193 -->
-<!-- technical_padding_line_194 -->
-<!-- technical_padding_line_195 -->
-<!-- technical_padding_line_196 -->
-<!-- technical_padding_line_197 -->
-<!-- technical_padding_line_198 -->
-<!-- technical_padding_line_199 -->
-<!-- technical_padding_line_200 -->
-<!-- technical_padding_line_201 -->
-<!-- technical_padding_line_202 -->
-<!-- technical_padding_line_203 -->
-<!-- technical_padding_line_204 -->
-<!-- technical_padding_line_205 -->
-<!-- technical_padding_line_206 -->
-<!-- technical_padding_line_207 -->
-<!-- technical_padding_line_208 -->
-<!-- technical_padding_line_209 -->
-<!-- technical_padding_line_210 -->
-<!-- technical_padding_line_211 -->
-<!-- technical_padding_line_212 -->
-<!-- technical_padding_line_213 -->
-<!-- technical_padding_line_214 -->
-<!-- technical_padding_line_215 -->
-<!-- technical_padding_line_216 -->
-<!-- technical_padding_line_217 -->
-<!-- technical_padding_line_218 -->
-<!-- technical_padding_line_219 -->
-<!-- technical_padding_line_220 -->
-<!-- technical_padding_line_221 -->
-<!-- technical_padding_line_222 -->
-<!-- technical_padding_line_223 -->
-<!-- technical_padding_line_224 -->
-<!-- technical_padding_line_225 -->
-<!-- technical_padding_line_226 -->
-<!-- technical_padding_line_227 -->
-<!-- technical_padding_line_228 -->
-<!-- technical_padding_line_229 -->
-<!-- technical_padding_line_230 -->
-<!-- technical_padding_line_231 -->
-<!-- technical_padding_line_232 -->
-<!-- technical_padding_line_233 -->
-<!-- technical_padding_line_234 -->
-<!-- technical_padding_line_235 -->
-<!-- technical_padding_line_236 -->
-<!-- technical_padding_line_237 -->
-<!-- technical_padding_line_238 -->
-<!-- technical_padding_line_239 -->
-<!-- technical_padding_line_240 -->
-<!-- technical_padding_line_241 -->
-<!-- technical_padding_line_242 -->
-<!-- technical_padding_line_243 -->
-<!-- technical_padding_line_244 -->
-<!-- technical_padding_line_245 -->
-<!-- technical_padding_line_246 -->
-<!-- technical_padding_line_247 -->
-<!-- technical_padding_line_248 -->
-<!-- technical_padding_line_249 -->
-<!-- technical_padding_line_250 -->
-<!-- technical_padding_line_251 -->
-<!-- technical_padding_line_252 -->
-<!-- technical_padding_line_253 -->
-<!-- technical_padding_line_254 -->
-<!-- technical_padding_line_255 -->
-<!-- technical_padding_line_256 -->
-<!-- technical_padding_line_257 -->
-<!-- technical_padding_line_258 -->
-<!-- technical_padding_line_259 -->
-<!-- technical_padding_line_260 -->
-<!-- technical_padding_line_261 -->
-<!-- technical_padding_line_262 -->
-<!-- technical_padding_line_263 -->
-<!-- technical_padding_line_264 -->
-<!-- technical_padding_line_265 -->
-<!-- technical_padding_line_266 -->
-<!-- technical_padding_line_267 -->
-<!-- technical_padding_line_268 -->
-<!-- technical_padding_line_269 -->
-<!-- technical_padding_line_270 -->
-<!-- technical_padding_line_271 -->
-<!-- technical_padding_line_272 -->
-<!-- technical_padding_line_273 -->
-<!-- technical_padding_line_274 -->
-<!-- technical_padding_line_275 -->
-<!-- technical_padding_line_276 -->
-<!-- technical_padding_line_277 -->
-<!-- technical_padding_line_278 -->
-<!-- technical_padding_line_279 -->
-<!-- technical_padding_line_280 -->
-<!-- technical_padding_line_281 -->
-<!-- technical_padding_line_282 -->
-<!-- technical_padding_line_283 -->
-<!-- technical_padding_line_284 --><!-- final_adjustment_line_500 -->
+
+## 🧨 Environment Cleanup (Nuke Option)
+
+For development or cost-control purposes, this repository includes a **"Nuke" pipeline** (`nuke-destroy-envs.yaml`) designed to completely tear down the environment in the correct dependency order.
+
+### 🛡️ Safety First (Dry Run Capability)
+The pipeline is designed with a **"Look Before You Leap"** approach:
+1.  **Confirmation Required**: You must manually type `DESTROY` in the workflow input.
+2.  **Dry Run by Default**: If the `run_destroy` checkbox is **unchecked**, the pipeline will only execute `terraform plan -destroy`. This allows you to inspect the logs and see exactly which resources (VPC, GKE, Services) would be deleted without actually touching them.
+3.  **Two-Step Execution**: Only when `run_destroy` is **checked** will the `terraform destroy` and state cleanup commands run.
+
+### 🔄 What is Destroyed?
+*   **Layer 1 (Apps)**: All Kubernetes deployments, services, and ingresses (Bookinfo).
+*   **Layer 2 (Infra)**: The GKE cluster, VPC, Subnets, Firewalls, and Bastion host.
+*   **Terraform State**: The `.tfstate` files in the GCS bucket are removed to ensure a clean slate for the next deployment.
+
+### 🔑 What Stays Alive? (Bootstrap Resources)
+To ensure you can redeploy the environment later without manual GCP console intervention, the following resources **are NOT touched**:
+*   **Workload Identity Federation (WIF)**: The Identity Pool and Provider remain active.
+*   **GCS Bucket**: The bucket itself is preserved, though the state files inside are cleared.
+
+---
+*Developed as a GitOps reference for GCP & Kubernetes.*
