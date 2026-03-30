@@ -12,6 +12,7 @@ A comprehensive automated solution for **GCP Infrastructure provisioning (via Te
 ---
 
 ## 🏗️ Architecture Overview: A Hybrid Approach
+
 ```mermaid
 flowchart TD
     subgraph SC [Source Control GitHub / CSR]
@@ -61,6 +62,7 @@ flowchart TD
     AR -.-> DeployGKE
     DeployGKE -.-> GKE_Inst
     GKE -.-> GKE_Inst
+```
 
 This project demonstrates a sophisticated, real-world cloud-native architecture that separates concerns between two distinct, loosely-coupled lifecycles: **Infrastructure** and **Application**.
 
